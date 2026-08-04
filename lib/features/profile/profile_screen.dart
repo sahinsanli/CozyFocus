@@ -10,20 +10,21 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   Future<void> _editName(BuildContext context, String currentName) async {
-    final textController = TextEditingController(text: currentName);
+    var draftName = currentName;
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit profile'),
-        content: TextField(
-          controller: textController,
+        content: TextFormField(
+          initialValue: currentName,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
             labelText: 'Name',
             border: OutlineInputBorder(),
           ),
-          onSubmitted: (value) => Navigator.pop(context, value),
+          onChanged: (value) => draftName = value,
+          onFieldSubmitted: (value) => Navigator.pop(context, value),
         ),
         actions: [
           TextButton(
@@ -31,13 +32,12 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, textController.text),
+            onPressed: () => Navigator.pop(context, draftName),
             child: const Text('Save'),
           ),
         ],
       ),
     );
-    textController.dispose();
     if (value != null && context.mounted) {
       await AppScope.of(context).setUsername(value);
     }

@@ -57,6 +57,30 @@ void main() {
     expect(find.text('Earned Badges'), findsOneWidget);
   });
 
+  testWidgets('editing the profile name saves without a framework error', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profile-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Sahin');
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(controller.username, 'Sahin');
+    expect(preferences.getString('username'), 'Sahin');
+    expect(find.text('Sahin'), findsOneWidget);
+  });
+
   testWidgets('core screens do not overflow on a narrow phone', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.binding.setSurfaceSize(const Size(320, 700));

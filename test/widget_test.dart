@@ -1,5 +1,6 @@
 import 'package:cozy_focus/app.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
+import 'package:cozy_focus/core/services/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -151,5 +152,28 @@ void main() {
 
     expect(controller.soundVolumes['rain'], greaterThan(0));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('only bundled sounds are enabled in the production mixer', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(
+      preferences,
+      audioService: AssetAudioService(),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sounds'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('COMING SOON'), findsNWidgets(2));
+    expect(controller.isSoundAvailable('rain'), isTrue);
+    expect(controller.isSoundAvailable('fire'), isTrue);
+    expect(controller.isSoundAvailable('forest'), isTrue);
+    expect(controller.isSoundAvailable('piano'), isTrue);
+    expect(controller.isSoundAvailable('pond'), isFalse);
   });
 }

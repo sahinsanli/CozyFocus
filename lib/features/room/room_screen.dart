@@ -87,6 +87,7 @@ class RoomScreen extends StatelessWidget {
                   positions: controller.decorationPositions,
                   focusMinutes: controller.allTimeMinutes,
                   onMoved: controller.moveDecoration,
+                  onMoveEnd: controller.finishMovingDecoration,
                 ),
               ),
               const SizedBox(height: DesignTokens.sectionGap),
@@ -159,12 +160,14 @@ class _RoomCanvas extends StatelessWidget {
     required this.positions,
     required this.focusMinutes,
     required this.onMoved,
+    required this.onMoveEnd,
   });
 
   final Set<String> selectedIds;
   final Map<String, Offset> positions;
   final int focusMinutes;
   final void Function(String id, Offset position) onMoved;
+  final VoidCallback onMoveEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +204,7 @@ class _RoomCanvas extends StatelessWidget {
                     canvasSize: canvasSize,
                     plantStage: _plantStage(focusMinutes),
                     onMoved: (position) => onMoved(placement.$1, position),
+                    onMoveEnd: onMoveEnd,
                   ),
               Positioned(
                 left: 12,
@@ -250,6 +254,7 @@ class _RoomSprite extends StatefulWidget {
     required this.canvasSize,
     required this.plantStage,
     required this.onMoved,
+    required this.onMoveEnd,
   });
 
   final String decorationId;
@@ -258,6 +263,7 @@ class _RoomSprite extends StatefulWidget {
   final Size canvasSize;
   final int plantStage;
   final ValueChanged<Offset> onMoved;
+  final VoidCallback onMoveEnd;
 
   @override
   State<_RoomSprite> createState() => _RoomSpriteState();
@@ -307,6 +313,7 @@ class _RoomSpriteState extends State<_RoomSprite> {
             key: Key('room-decoration-${widget.decorationId}'),
             behavior: HitTestBehavior.translucent,
             onPanUpdate: _move,
+            onPanEnd: (_) => widget.onMoveEnd(),
             onTap: _handleTap,
             child: TweenAnimationBuilder<double>(
               duration: const Duration(milliseconds: 420),

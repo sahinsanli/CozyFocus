@@ -47,8 +47,21 @@ class SoundsScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _SoundCard(
                     sound: sound,
+                    available: controller.isSoundAvailable(sound.id),
                     volume: controller.soundVolumes[sound.id] ?? 0,
-                    onToggle: () => controller.toggleSound(sound.id),
+                    onToggle: () async {
+                      final success = await controller.toggleSound(sound.id);
+                      if (!success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              controller.audioErrorMessage ??
+                                  '${sound.name} is coming soon.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
                     onVolume: (value) =>
                         controller.setSoundVolume(sound.id, value),
                   ),
@@ -147,7 +160,7 @@ class SoundsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Audio files are not bundled yet. Mixer controls are a safe functional mock.',
+                      'Rain, campfire, forest, and piano are ready to mix. More ambience loops are coming soon.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -167,19 +180,21 @@ class SoundsScreen extends StatelessWidget {
 class _SoundCard extends StatelessWidget {
   const _SoundCard({
     required this.sound,
+    required this.available,
     required this.volume,
     required this.onToggle,
     required this.onVolume,
   });
 
   final SoundItem sound;
+  final bool available;
   final double volume;
   final VoidCallback onToggle;
   final ValueChanged<double> onVolume;
 
   @override
   Widget build(BuildContext context) {
-    final active = volume > 0;
+    final active = available && volume > 0;
     return CozyCard(
       border: Border.all(
         color: active
@@ -237,7 +252,7 @@ class _SoundCard extends StatelessWidget {
                           tooltip: active
                               ? 'Pause ${sound.name}'
                               : 'Play ${sound.name}',
-                          onPressed: onToggle,
+                          onPressed: available ? onToggle : null,
                           style: IconButton.styleFrom(
                             backgroundColor: active
                                 ? AppColors.sageSoft
@@ -255,6 +270,32 @@ class _SoundCard extends StatelessWidget {
                   ),
                   if (active)
                     const Positioned(top: 12, right: 12, child: _PlayingBars()),
+                  if (!available)
+                    Positioned(
+                      left: 12,
+                      top: 12,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: .58),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            'COMING SOON',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -266,7 +307,7 @@ class _SoundCard extends StatelessWidget {
               Expanded(
                 child: Slider(
                   value: volume,
-                  onChanged: onVolume,
+                  onChanged: available ? onVolume : null,
                   semanticFormatterCallback: (value) =>
                       '${(value * 100).round()} percent',
                 ),
@@ -324,8 +365,10 @@ class _SoundPreviewState extends State<_SoundPreview>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, child) =>
-          Transform.scale(scale: 1 + _controller.value * .055, child: child),
+      builder: (context, child) => Transform.scale(
+        scale: 1.055 + _controller.value * .045,
+        child: child,
+      ),
       child: AtlasSprite(
         assetPath: AppAssets.atmospherePreviewAtlas,
         columns: 2,

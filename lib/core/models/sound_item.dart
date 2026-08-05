@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../assets/app_assets.dart';
+
 class SoundItem {
   const SoundItem(
     this.id,
@@ -8,6 +10,7 @@ class SoundItem {
     required this.previewColumn,
     required this.previewRow,
     required this.previewCrop,
+    this.audioAsset,
   });
 
   final String id;
@@ -16,6 +19,9 @@ class SoundItem {
   final int previewColumn;
   final int previewRow;
   final Rect previewCrop;
+  final String? audioAsset;
+
+  bool get isAvailable => audioAsset != null;
 }
 
 const soundCatalog = <SoundItem>[
@@ -26,6 +32,7 @@ const soundCatalog = <SoundItem>[
     previewColumn: 0,
     previewRow: 0,
     previewCrop: Rect.fromLTRB(.12, .04, .98, 1),
+    audioAsset: AppAssets.rainAudio,
   ),
   SoundItem(
     'fire',
@@ -34,6 +41,7 @@ const soundCatalog = <SoundItem>[
     previewColumn: 1,
     previewRow: 0,
     previewCrop: Rect.fromLTRB(.02, .04, .88, 1),
+    audioAsset: AppAssets.campfireAudio,
   ),
   SoundItem(
     'cafe',
@@ -50,6 +58,7 @@ const soundCatalog = <SoundItem>[
     previewColumn: 1,
     previewRow: 1,
     previewCrop: Rect.fromLTRB(.02, .09, .88, .98),
+    audioAsset: AppAssets.deepForestAudio,
   ),
   SoundItem(
     'piano',
@@ -58,6 +67,7 @@ const soundCatalog = <SoundItem>[
     previewColumn: 0,
     previewRow: 2,
     previewCrop: Rect.fromLTRB(.12, .02, .98, .97),
+    audioAsset: AppAssets.softPianoAudio,
   ),
   SoundItem(
     'pond',

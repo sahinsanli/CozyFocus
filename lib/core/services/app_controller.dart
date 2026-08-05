@@ -8,15 +8,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/decoration_item.dart';
 import '../models/sound_item.dart';
 import 'audio_service.dart';
+import 'sound_effect_service.dart';
 
 enum FocusTimerStatus { idle, running, paused, complete }
 
 class AppController extends ChangeNotifier {
-  AppController(this._preferences, {AudioService? audioService})
-    : _audioService = audioService ?? MockAudioService();
+  AppController(
+    this._preferences, {
+    AudioService? audioService,
+    SoundEffectService? soundEffectService,
+  }) : _audioService = audioService ?? MockAudioService(),
+       _soundEffectService = soundEffectService ?? MockSoundEffectService();
 
   final SharedPreferences _preferences;
   final AudioService _audioService;
+  final SoundEffectService _soundEffectService;
   Timer? _ticker;
 
   String username = 'Selin';
@@ -47,6 +53,7 @@ class AppController extends ChangeNotifier {
   final Map<String, double> soundVolumes = {
     for (final sound in soundCatalog) sound.id: 0,
   };
+  String? audioErrorMessage;
   int sleepTimerMinutes = 30;
 
   int get allTimeMinutes =>
@@ -154,9 +161,10 @@ class AppController extends ChangeNotifier {
       }
     }
 
+    // Do not present a sound as active after a cold start unless playback has
+    // actually been started in this process.
     for (final sound in soundCatalog) {
-      soundVolumes[sound.id] =
-          _preferences.getDouble('volume_${sound.id}') ?? 0;
+      soundVolumes[sound.id] = 0;
     }
     sleepTimerMinutes =
         _preferences.getInt('sleepTimerMinutes') ?? sleepTimerMinutes;
@@ -219,6 +227,7 @@ class AppController extends ChangeNotifier {
 
   void _startTicker() {
     _ticker?.cancel();
+    var developmentStage = (timerProgress * 4).floor();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (remainingSeconds <= 1) {
         remainingSeconds = 0;
@@ -226,6 +235,11 @@ class AppController extends ChangeNotifier {
         await _completeSession();
       } else {
         remainingSeconds--;
+        final nextStage = (timerProgress * 4).floor();
+        if (nextStage > developmentStage && nextStage < 4) {
+          developmentStage = nextStage;
+          unawaited(_playDevelopmentEffect());
+        }
         notifyListeners();
       }
     });
@@ -240,6 +254,7 @@ class AppController extends ChangeNotifier {
     remainingSeconds = 0;
     lastRewardMinutes = minutes;
     showCelebration = true;
+    unawaited(_playEffect(AppSoundEffect.claimReward));
     await _preferences.setString('dailyMinutes', jsonEncode(_dailyMinutes));
     await _persistTimer();
     notifyListeners();
@@ -273,8 +288,10 @@ class AppController extends ChangeNotifier {
     final item = decorationCatalog.firstWhere((item) => item.id == id);
     if (allTimeMinutes < item.unlockMinutes) return;
     layoutSaved = false;
-    if (!selectedDecorationIds.remove(id)) selectedDecorationIds.add(id);
+    final added = !selectedDecorationIds.remove(id);
+    if (added) selectedDecorationIds.add(id);
     notifyListeners();
+    if (added) unawaited(_playEffect(AppSoundEffect.puttingItem));
   }
 
   Future<void> saveLayout() async {
@@ -302,28 +319,86 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleSound(String id) async {
-    final current = soundVolumes[id] ?? 0;
-    if (current > 0) {
-      soundVolumes[id] = 0;
-      await _audioService.pause(id);
-    } else {
-      soundVolumes[id] = .6;
-      await _audioService.play(id, .6);
+  void finishMovingDecoration() {
+    unawaited(_playEffect(AppSoundEffect.puttingItem));
+  }
+
+  Future<void> playTapSound() => _playEffect(AppSoundEffect.click);
+
+  AppSoundEffect? get developmentSoundEffect {
+    final upcoming =
+        decorationCatalog
+            .where((item) => item.unlockMinutes > allTimeMinutes)
+            .toList()
+          ..sort((a, b) => a.unlockMinutes.compareTo(b.unlockMinutes));
+    if (upcoming.isEmpty) return null;
+    final item = upcoming.first;
+    if (item.id == 'sleeping_cat') return AppSoundEffect.catMeow;
+    if (item.category == 'Furniture') return AppSoundEffect.woodCut;
+    return null;
+  }
+
+  Future<void> _playDevelopmentEffect() async {
+    final effect = developmentSoundEffect;
+    if (effect != null) await _playEffect(effect);
+  }
+
+  Future<void> _playEffect(AppSoundEffect effect) async {
+    try {
+      await _soundEffectService.play(effect);
+    } catch (_) {
+      // Sound feedback should never interrupt a focus session or interaction.
     }
-    await _preferences.setDouble('volume_$id', soundVolumes[id]!);
-    notifyListeners();
+  }
+
+  bool isSoundAvailable(String id) => _audioService.supports(id);
+
+  Future<bool> toggleSound(String id) async {
+    if (!_audioService.supports(id)) {
+      audioErrorMessage = null;
+      return false;
+    }
+    final current = soundVolumes[id] ?? 0;
+    try {
+      if (current > 0) {
+        await _audioService.pause(id);
+        soundVolumes[id] = 0;
+      } else {
+        await _audioService.play(id, .6);
+        soundVolumes[id] = .6;
+      }
+      audioErrorMessage = null;
+      await _preferences.setDouble('volume_$id', soundVolumes[id]!);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      soundVolumes[id] = 0;
+      audioErrorMessage = 'This sound could not be played.';
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> setSoundVolume(String id, double value) async {
-    soundVolumes[id] = value;
-    if (value == 0) {
-      await _audioService.pause(id);
-    } else {
-      await _audioService.setVolume(id, value);
+    if (!_audioService.supports(id)) return;
+    final previous = soundVolumes[id] ?? 0;
+    try {
+      if (value == 0) {
+        await _audioService.pause(id);
+      } else if (previous == 0) {
+        await _audioService.play(id, value);
+      } else {
+        await _audioService.setVolume(id, value);
+      }
+      soundVolumes[id] = value;
+      audioErrorMessage = null;
+      await _preferences.setDouble('volume_$id', value);
+      notifyListeners();
+    } catch (_) {
+      soundVolumes[id] = 0;
+      audioErrorMessage = 'The volume could not be changed.';
+      notifyListeners();
     }
-    await _preferences.setDouble('volume_$id', value);
-    notifyListeners();
   }
 
   Future<void> stopAllSounds() async {
@@ -405,6 +480,8 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _ticker?.cancel();
+    unawaited(_audioService.dispose());
+    unawaited(_soundEffectService.dispose());
     super.dispose();
   }
 }

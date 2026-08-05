@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/assets/app_assets.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
@@ -101,15 +102,13 @@ class ProfileScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.sageSoft,
-                        border: Border.all(color: Colors.white, width: 5),
                         boxShadow: DesignTokens.softShadow,
                       ),
-                      child: Center(
-                        child: Text(
-                          controller.username.characters.first.toUpperCase(),
-                          style: Theme.of(context).textTheme.displaySmall
-                              ?.copyWith(color: AppColors.sage, fontSize: 52),
-                        ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        AppAssets.appIcon,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
                       ),
                     ),
                     Positioned(

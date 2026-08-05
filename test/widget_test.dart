@@ -102,4 +102,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Moonleaf animates and room decorations can be dragged', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Room'));
+    await tester.pumpAndSettle();
+
+    final plant = find.byKey(const Key('room-decoration-cactus'));
+    expect(plant, findsOneWidget);
+    await tester.ensureVisible(plant);
+    await tester.pumpAndSettle();
+    await tester.tap(plant);
+    await tester.pump(const Duration(milliseconds: 800));
+    final gesture = await tester.startGesture(tester.getCenter(plant));
+    await gesture.moveBy(const Offset(22, 0));
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(22, 0));
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(22, 0));
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(22, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(controller.decorationPositions['cactus']!.dx, greaterThan(.1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('active sound previews animate without framework errors', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sounds'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Play Rainy Night'));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(controller.soundVolumes['rain'], greaterThan(0));
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -22,11 +22,12 @@ flutter build apk --debug
 
 ## Structure
 
-- `lib/core/`: theme, models, persistence, service contracts, shared widgets
+- `lib/core/`: theme, asset mappings, models, persistence, service contracts, shared widgets
 - `lib/features/`: focus, room, stats, sounds, profile, and settings screens
-- `assets/placeholders/`: replacement point for future PNG/SVG illustrations
+- `assets/visuals/`: production room scenes, app artwork, and cropped sprite atlases
+- `assets/placeholders/`: fallback guidance for future visual replacements
 - `assets/fonts/`: bundled Quicksand and Nunito Sans fonts (SIL Open Font License)
 
-Ambient audio and final illustrations are intentionally not bundled. The
-current controls use `MockAudioService`, while visual placeholders are drawn as
-real Flutter widgets so both can be replaced without changing feature state.
+The final illustration pack is bundled and mapped through `AppAssets` and
+`AtlasSprite`. Ambient sound playback remains intentionally local and safe via
+`MockAudioService`; the sound cards use the supplied atmosphere previews.

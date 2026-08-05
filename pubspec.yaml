@@ -60,6 +60,7 @@ flutter:
 
   assets:
     - assets/placeholders/
+    - assets/visuals/
 
   fonts:
     - family: Quicksand

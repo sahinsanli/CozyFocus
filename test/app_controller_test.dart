@@ -90,4 +90,17 @@ void main() {
     await controller.stopAllSounds();
     expect(controller.soundVolumes.values, everyElement(0));
   });
+
+  test('room decoration positions persist with the saved layout', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    controller.moveDecoration('cactus', const Offset(.24, .31));
+    await controller.saveLayout();
+
+    final restored = AppController(preferences);
+    await restored.restore();
+
+    expect(restored.decorationPositions['cactus'], const Offset(.24, .31));
+  });
 }

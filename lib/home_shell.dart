@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'core/assets/app_assets.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/design_tokens.dart';
-import 'core/widgets/app_scope.dart';
 import 'features/focus/focus_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/room/room_screen.dart';
@@ -41,7 +41,6 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppScope.of(context);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(
@@ -77,11 +76,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: CircleAvatar(
                   radius: 20,
                   backgroundColor: AppColors.sageSoft,
-                  foregroundColor: AppColors.sage,
-                  child: Text(
-                    controller.username.characters.first.toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
+                  backgroundImage: const AssetImage(AppAssets.appIcon),
                 ),
               ),
             ),

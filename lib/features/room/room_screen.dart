@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/assets/app_assets.dart';
+import '../../core/assets/atlas_sprite.dart';
 import '../../core/models/decoration_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
@@ -78,9 +81,12 @@ class RoomScreen extends StatelessWidget {
               ),
               const SizedBox(height: 26),
               AspectRatio(
-                aspectRatio: .72,
+                aspectRatio: 899 / 1748,
                 child: _RoomCanvas(
                   selectedIds: controller.selectedDecorationIds,
+                  positions: controller.decorationPositions,
+                  focusMinutes: controller.allTimeMinutes,
+                  onMoved: controller.moveDecoration,
                 ),
               ),
               const SizedBox(height: DesignTokens.sectionGap),
@@ -134,6 +140,7 @@ class RoomScreen extends StatelessWidget {
                     item: item,
                     unlocked: unlocked,
                     selected: selected,
+                    focusMinutes: controller.allTimeMinutes,
                     onTap: () => controller.toggleDecoration(item.id),
                   );
                 },
@@ -147,9 +154,17 @@ class RoomScreen extends StatelessWidget {
 }
 
 class _RoomCanvas extends StatelessWidget {
-  const _RoomCanvas({required this.selectedIds});
+  const _RoomCanvas({
+    required this.selectedIds,
+    required this.positions,
+    required this.focusMinutes,
+    required this.onMoved,
+  });
 
   final Set<String> selectedIds;
+  final Map<String, Offset> positions;
+  final int focusMinutes;
+  final void Function(String id, Offset position) onMoved;
 
   @override
   Widget build(BuildContext context) {
@@ -157,135 +172,220 @@ class _RoomCanvas extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF5E7), Color(0xFFF2D2B7)],
-        ),
         boxShadow: DesignTokens.softShadow,
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 170,
-            child: CustomPaint(painter: _FloorPainter()),
-          ),
-          Positioned(
-            left: 20,
-            top: 24,
-            child: Container(
-              width: 94,
-              height: 128,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .55),
-                border: Border.all(color: Colors.white, width: 7),
-                borderRadius: BorderRadius.circular(10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final canvasSize = constraints.biggest;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                AppAssets.sanctuaryRoom,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
               ),
-              child: const Icon(
-                Icons.wb_sunny_outlined,
-                size: 38,
-                color: Color(0xFFD59F65),
+              for (final placement in const [
+                ('armchair', .34),
+                ('bookshelf', .25),
+                ('cactus', .34),
+                ('hanging_plant', .24),
+                ('sleeping_cat', .25),
+              ])
+                if (selectedIds.contains(placement.$1))
+                  _RoomSprite(
+                    key: ValueKey(placement.$1),
+                    decorationId: placement.$1,
+                    position: positions[placement.$1] ?? const Offset(0, 0),
+                    widthFactor: placement.$2,
+                    canvasSize: canvasSize,
+                    plantStage: _plantStage(focusMinutes),
+                    onMoved: (position) => onMoved(placement.$1, position),
+                  ),
+              Positioned(
+                left: 12,
+                right: 12,
+                top: 12,
+                child: IgnorePointer(
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .48),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 7,
+                        ),
+                        child: Text(
+                          'Drag to arrange  •  Tap Moonleaf to grow',
+                          style: TextStyle(color: Colors.white, fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-          Positioned(
-            right: 20,
-            top: 60,
-            child: Container(
-              width: 74,
-              height: 160,
-              decoration: BoxDecoration(
-                color: const Color(0xFFB98760).withValues(alpha: .38),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.shelves, size: 44, color: AppColors.sage),
-            ),
-          ),
-          if (selectedIds.contains('armchair'))
-            const Positioned(
-              left: 52,
-              bottom: 86,
-              child: Text('🪑', style: TextStyle(fontSize: 78)),
-            ),
-          if (selectedIds.contains('bookshelf'))
-            const Positioned(
-              right: 35,
-              top: 103,
-              child: Text('📚', style: TextStyle(fontSize: 42)),
-            ),
-          if (selectedIds.contains('cactus'))
-            const Positioned(
-              left: 52,
-              top: 155,
-              child: Text('🌵', style: TextStyle(fontSize: 58)),
-            ),
-          if (selectedIds.contains('hanging_plant'))
-            const Positioned(
-              right: 100,
-              top: 20,
-              child: Text('🌿', style: TextStyle(fontSize: 54)),
-            ),
-          if (selectedIds.contains('sleeping_cat'))
-            const Positioned(
-              right: 44,
-              bottom: 36,
-              child: Text('🐈', style: TextStyle(fontSize: 58)),
-            ),
-          Positioned(
-            left: 26,
-            right: 26,
-            bottom: 22,
-            child: Container(
-              height: 88,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .48),
-                borderRadius: BorderRadius.circular(60),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 22,
-            child: Text(
-              'ROOM ART PLACEHOLDER',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.sage.withValues(alpha: .65),
-                fontSize: 11,
-                letterSpacing: 1.1,
-              ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
+
+  static int _plantStage(int minutes) => minutes >= 180
+      ? 2
+      : minutes >= 60
+      ? 1
+      : 0;
 }
 
-class _FloorPainter extends CustomPainter {
+class _RoomSprite extends StatefulWidget {
+  const _RoomSprite({
+    super.key,
+    required this.decorationId,
+    required this.position,
+    required this.widthFactor,
+    required this.canvasSize,
+    required this.plantStage,
+    required this.onMoved,
+  });
+
+  final String decorationId;
+  final Offset position;
+  final double widthFactor;
+  final Size canvasSize;
+  final int plantStage;
+  final ValueChanged<Offset> onMoved;
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFC9986D).withValues(alpha: .26)
-      ..strokeWidth = 1;
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = const Color(0xFFE9C49F),
-    );
-    for (double y = 12; y < size.height; y += 28) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-    for (double x = 18; x < size.width; x += 64) {
-      canvas.drawLine(Offset(x, 0), Offset(x + 28, size.height), paint);
+  State<_RoomSprite> createState() => _RoomSpriteState();
+}
+
+class _RoomSpriteState extends State<_RoomSprite> {
+  late int _shownPlantStage = widget.plantStage;
+
+  @override
+  void didUpdateWidget(covariant _RoomSprite oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.plantStage != widget.plantStage) {
+      _shownPlantStage = widget.plantStage;
     }
   }
 
+  void _move(DragUpdateDetails details) {
+    final next = Offset(
+      widget.position.dx + details.delta.dx / (widget.canvasSize.width / 2),
+      widget.position.dy + details.delta.dy / (widget.canvasSize.height / 2),
+    );
+    widget.onMoved(next);
+  }
+
+  void _handleTap() {
+    if (widget.decorationId != 'cactus') return;
+    HapticFeedback.selectionClick();
+    setState(() => _shownPlantStage = (_shownPlantStage + 1) % 3);
+  }
+
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    final item = decorationCatalog.firstWhere(
+      (item) => item.id == widget.decorationId,
+    );
+    final isPlant = widget.decorationId == 'cactus';
+    return Align(
+      alignment: Alignment(widget.position.dx, widget.position.dy),
+      child: FractionallySizedBox(
+        widthFactor: widget.widthFactor,
+        child: Semantics(
+          button: true,
+          label: isPlant
+              ? 'Moonleaf, drag to move or tap to preview growth'
+              : '${item.name}, drag to move',
+          child: GestureDetector(
+            key: Key('room-decoration-${widget.decorationId}'),
+            behavior: HitTestBehavior.translucent,
+            onPanUpdate: _move,
+            onTap: _handleTap,
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeOutBack,
+              tween: Tween(begin: .78, end: 1),
+              builder: (context, scale, child) => Transform.scale(
+                scale: scale,
+                alignment: Alignment.bottomCenter,
+                child: child,
+              ),
+              child: AspectRatio(
+                aspectRatio: isPlant ? 1 : item.contentAspectRatio,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (widget.decorationId != 'hanging_plant')
+                      Align(
+                        alignment: const Alignment(0, .92),
+                        child: FractionallySizedBox(
+                          widthFactor: .68,
+                          heightFactor: .10,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: .18),
+                              borderRadius: const BorderRadius.all(
+                                Radius.elliptical(100, 28),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (isPlant)
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 700),
+                        switchInCurve: Curves.easeOutBack,
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween(
+                              begin: .62,
+                              end: 1.0,
+                            ).animate(animation),
+                            alignment: Alignment.bottomCenter,
+                            child: child,
+                          ),
+                        ),
+                        child: SizedBox.expand(
+                          key: ValueKey(_shownPlantStage),
+                          child: AtlasSprite(
+                            assetPath: AppAssets.plantGrowthAtlas,
+                            columns: 3,
+                            rows: 3,
+                            column: _shownPlantStage,
+                            row: 0,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.bottomCenter,
+                          ),
+                        ),
+                      )
+                    else
+                      AtlasSprite(
+                        assetPath: item.assetPath,
+                        columns: item.atlasColumns,
+                        rows: item.atlasRows,
+                        column: item.atlasColumn,
+                        row: item.atlasRow,
+                        contentRect: item.atlasCrop,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomCenter,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _InventoryCard extends StatelessWidget {
@@ -293,12 +393,14 @@ class _InventoryCard extends StatelessWidget {
     required this.item,
     required this.unlocked,
     required this.selected,
+    required this.focusMinutes,
     required this.onTap,
   });
 
   final DecorationItem item;
   final bool unlocked;
   final bool selected;
+  final int focusMinutes;
   final VoidCallback onTap;
 
   @override
@@ -330,7 +432,20 @@ class _InventoryCard extends StatelessWidget {
                   ),
                   child: Center(
                     child: unlocked
-                        ? Text(item.emoji, style: const TextStyle(fontSize: 48))
+                        ? Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: AtlasSprite(
+                              assetPath: item.assetPath,
+                              columns: item.atlasColumns,
+                              rows: item.atlasRows,
+                              column: item.id == 'cactus'
+                                  ? _RoomCanvas._plantStage(focusMinutes)
+                                  : item.atlasColumn,
+                              row: item.atlasRow,
+                              contentRect: item.atlasCrop,
+                              fit: BoxFit.contain,
+                            ),
+                          )
                         : FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Column(

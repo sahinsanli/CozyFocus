@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../core/assets/app_assets.dart';
+import '../../core/assets/atlas_sprite.dart';
 import '../../core/models/sound_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_scope.dart';
@@ -185,45 +189,77 @@ class _SoundCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active ? AppColors.sageMid : AppColors.beige,
-                ),
-                child: Icon(
-                  sound.icon,
-                  color: active ? Colors.white : AppColors.mutedInk,
-                ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 118,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _SoundPreview(sound: sound, active: active),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Color(0xB0000000)],
+                        stops: [.28, 1],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 12,
+                    bottom: 10,
+                    child: Row(
+                      children: [
+                        Icon(sound.icon, color: Colors.white, size: 22),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            sound.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                          ),
+                        ),
+                        IconButton.filled(
+                          tooltip: active
+                              ? 'Pause ${sound.name}'
+                              : 'Play ${sound.name}',
+                          onPressed: onToggle,
+                          style: IconButton.styleFrom(
+                            backgroundColor: active
+                                ? AppColors.sageSoft
+                                : Colors.white.withValues(alpha: .88),
+                            foregroundColor: AppColors.ink,
+                          ),
+                          icon: Icon(
+                            active
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (active)
+                    const Positioned(top: 12, right: 12, child: _PlayingBars()),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  sound.name,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              IconButton.filledTonal(
-                tooltip: active ? 'Pause ${sound.name}' : 'Play ${sound.name}',
-                onPressed: onToggle,
-                style: IconButton.styleFrom(
-                  backgroundColor: active
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                  foregroundColor: active
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : null,
-                ),
-                icon: Icon(
-                  active ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
               const Icon(Icons.volume_down_outlined, size: 18),
@@ -239,6 +275,119 @@ class _SoundCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SoundPreview extends StatefulWidget {
+  const _SoundPreview({required this.sound, required this.active});
+
+  final SoundItem sound;
+  final bool active;
+
+  @override
+  State<_SoundPreview> createState() => _SoundPreviewState();
+}
+
+class _SoundPreviewState extends State<_SoundPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 7),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _controller.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SoundPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active == oldWidget.active) return;
+    if (widget.active) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.animateBack(0, duration: const Duration(milliseconds: 350));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) =>
+          Transform.scale(scale: 1 + _controller.value * .055, child: child),
+      child: AtlasSprite(
+        assetPath: AppAssets.atmospherePreviewAtlas,
+        columns: 2,
+        rows: 3,
+        column: widget.sound.previewColumn,
+        row: widget.sound.previewRow,
+        contentRect: widget.sound.previewCrop,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
+class _PlayingBars extends StatefulWidget {
+  const _PlayingBars();
+
+  @override
+  State<_PlayingBars> createState() => _PlayingBarsState();
+}
+
+class _PlayingBarsState extends State<_PlayingBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: .42),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) => Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(3, (index) {
+              final wave = math.sin(
+                (_controller.value * math.pi * 2) + index * 1.7,
+              );
+              return Container(
+                width: 3,
+                height: 7 + (wave + 1) * 4,
+                margin: EdgeInsets.only(left: index == 0 ? 0 : 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

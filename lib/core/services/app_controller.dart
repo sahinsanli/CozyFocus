@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Offset;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,7 +34,14 @@ class AppController extends ChangeNotifier {
   int lastRewardMinutes = 0;
 
   final Map<String, int> _dailyMinutes = {};
-  final Set<String> selectedDecorationIds = {'cactus', 'bookshelf'};
+  final Set<String> selectedDecorationIds = {'cactus'};
+  final Map<String, Offset> decorationPositions = {
+    'cactus': const Offset(.10, -.04),
+    'bookshelf': const Offset(.42, .08),
+    'sleeping_cat': const Offset(.38, .50),
+    'hanging_plant': const Offset(.56, -.62),
+    'armchair': const Offset(-.46, .34),
+  };
   bool layoutSaved = false;
 
   final Map<String, double> soundVolumes = {
@@ -124,9 +132,27 @@ class AppController extends ChangeNotifier {
     selectedDecorationIds
       ..clear()
       ..addAll(
-        _preferences.getStringList('selectedDecorations') ??
-            const ['cactus', 'bookshelf'],
+        _preferences.getStringList('selectedDecorations') ?? const ['cactus'],
       );
+
+    final positionsJson = _preferences.getString('decorationPositions');
+    if (positionsJson == null) {
+      // The illustrated room already contains a built-in bookshelf. Older
+      // layouts selected a second one by default, which looked duplicated.
+      selectedDecorationIds.remove('bookshelf');
+    }
+    if (positionsJson != null) {
+      final values = jsonDecode(positionsJson) as Map<String, dynamic>;
+      for (final entry in values.entries) {
+        final coordinates = entry.value as List<dynamic>;
+        if (coordinates.length == 2) {
+          decorationPositions[entry.key] = Offset(
+            (coordinates[0] as num).toDouble(),
+            (coordinates[1] as num).toDouble(),
+          );
+        }
+      }
+    }
 
     for (final sound in soundCatalog) {
       soundVolumes[sound.id] =
@@ -256,7 +282,23 @@ class AppController extends ChangeNotifier {
       'selectedDecorations',
       selectedDecorationIds.toList(),
     );
+    await _preferences.setString(
+      'decorationPositions',
+      jsonEncode({
+        for (final entry in decorationPositions.entries)
+          entry.key: [entry.value.dx, entry.value.dy],
+      }),
+    );
     layoutSaved = true;
+    notifyListeners();
+  }
+
+  void moveDecoration(String id, Offset position) {
+    decorationPositions[id] = Offset(
+      position.dx.clamp(-.88, .88),
+      position.dy.clamp(-.80, .80),
+    );
+    layoutSaved = false;
     notifyListeners();
   }
 

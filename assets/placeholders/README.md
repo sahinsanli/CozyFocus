@@ -1,6 +1,5 @@
 # Placeholder assets
 
-The MVP currently draws room, avatar, focus, and decoration placeholders with
-Flutter widgets. Final PNG/SVG assets can be added here and swapped inside
-`lib/core/widgets/placeholder_art.dart` and the room canvas without changing
-feature state or screen layout.
+Production artwork lives in `assets/visuals/`. Keep this directory only for
+temporary fallbacks when prototyping future scenes or atlas entries; permanent
+assets should be registered through `lib/core/assets/app_assets.dart`.

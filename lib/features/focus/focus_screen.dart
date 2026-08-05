@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/assets/app_assets.dart';
+import '../../core/assets/atlas_sprite.dart';
 import '../../core/services/app_controller.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
-import '../../core/widgets/placeholder_art.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -52,14 +54,21 @@ class FocusScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              const SizedBox(
+              SizedBox(
                 width: 250,
-                height: 190,
-                child: PlaceholderArt(
-                  icon: Icons.menu_book_outlined,
-                  emoji: '🌱',
-                  label: 'Focus nook placeholder',
-                  circular: true,
+                height: 250,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: DesignTokens.softShadow,
+                  ),
+                  child: Image.asset(
+                    AppAssets.focusRoomHero,
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0, .38),
+                    filterQuality: FilterQuality.high,
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -257,11 +266,7 @@ class _CelebrationCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(
               children: [
-                const Icon(
-                  Icons.auto_awesome,
-                  color: AppColors.terracotta,
-                  size: 42,
-                ),
+                const _PlantGrowthCelebration(),
                 const SizedBox(height: 12),
                 Text(
                   'Session complete',
@@ -283,6 +288,101 @@ class _CelebrationCard extends StatelessWidget {
                   child: const Text('Begin another session'),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlantGrowthCelebration extends StatefulWidget {
+  const _PlantGrowthCelebration();
+
+  @override
+  State<_PlantGrowthCelebration> createState() =>
+      _PlantGrowthCelebrationState();
+}
+
+class _PlantGrowthCelebrationState extends State<_PlantGrowthCelebration> {
+  int _stage = 0;
+  Timer? _growthTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _growthTimer = Timer.periodic(const Duration(milliseconds: 720), (timer) {
+      if (!mounted || _stage == 2) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _stage++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _growthTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 154,
+      height: 154,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Positioned.fill(
+            child: AtlasSprite(
+              assetPath: AppAssets.focusCelebrationAtlas,
+              columns: 2,
+              rows: 2,
+              column: 0,
+              row: 0,
+              fit: BoxFit.contain,
+            ),
+          ),
+          Container(
+            width: 118,
+            height: 118,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.sageSoft.withValues(alpha: .34),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.sageMid.withValues(alpha: .28),
+                  blurRadius: 28,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 680),
+            switchInCurve: Curves.easeOutBack,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween(begin: .55, end: 1.0).animate(animation),
+                alignment: Alignment.bottomCenter,
+                child: child,
+              ),
+            ),
+            child: SizedBox(
+              key: ValueKey(_stage),
+              width: 150,
+              height: 150,
+              child: AtlasSprite(
+                assetPath: AppAssets.plantGrowthAtlas,
+                columns: 3,
+                rows: 3,
+                column: _stage,
+                row: 0,
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+              ),
             ),
           ),
         ],

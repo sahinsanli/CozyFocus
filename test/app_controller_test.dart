@@ -1,3 +1,4 @@
+import 'package:cozy_focus/core/models/decoration_item.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
 import 'package:cozy_focus/core/services/audio_service.dart';
 import 'package:cozy_focus/core/services/sound_effect_service.dart';
@@ -25,11 +26,41 @@ void main() {
   test('locked room decorations cannot be selected', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
+    await controller.setTestMode(false);
 
     await controller.toggleDecoration('sleeping_cat');
 
     expect(controller.selectedDecorationIds, isNot(contains('sleeping_cat')));
   });
+
+  test(
+    'test mode previews checkpoints and completion without adding stats',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final effects = _TrackingSoundEffectService();
+      final controller = AppController(
+        preferences,
+        soundEffectService: effects,
+      );
+      await controller.setDefaultFocusMinutes(15);
+
+      expect(controller.testMode, isTrue);
+      expect(controller.unlockedDecorationCount, decorationCatalog.length);
+      await controller.advanceTestFocus(5);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.testPreviewActive, isTrue);
+      expect(controller.testElapsedMinutes, 5);
+      expect(controller.timerStatus, FocusTimerStatus.paused);
+      expect(effects.played, contains(AppSoundEffect.woodCut));
+      expect(controller.allTimeMinutes, 0);
+
+      await controller.completeTestFocus();
+      expect(controller.showCelebration, isTrue);
+      expect(effects.played, contains(AppSoundEffect.claimReward));
+      expect(controller.allTimeMinutes, 0);
+    },
+  );
 
   test('timer transitions between running and paused safely', () async {
     final preferences = await SharedPreferences.getInstance();
@@ -99,15 +130,15 @@ void main() {
     ]);
   });
 
-  test('focus development maps cat and furniture effects', () async {
+  test('focus development maps upcoming item effects', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
 
-    expect(controller.developmentSoundEffect, AppSoundEffect.catMeow);
-    await controller.recordCompletedSession(50);
-    expect(controller.developmentSoundEffect, isNull);
-    await controller.recordCompletedSession(70);
     expect(controller.developmentSoundEffect, AppSoundEffect.woodCut);
+    await controller.recordCompletedSession(50);
+    expect(controller.developmentSoundEffect, AppSoundEffect.woodCut);
+    await controller.recordCompletedSession(70);
+    expect(controller.developmentSoundEffect, isNull);
   });
 
   test('sound mixer supports multiple active sounds and stop all', () async {
@@ -133,13 +164,32 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
 
-    controller.moveDecoration('cactus', const Offset(.24, .31));
+    controller.moveDecoration('desk', const Offset(.24, .31));
     await controller.saveLayout();
 
     final restored = AppController(preferences);
     await restored.restore();
 
-    expect(restored.decorationPositions['cactus'], const Offset(.24, .31));
+    expect(restored.decorationPositions['desk'], const Offset(.24, .31));
+  });
+
+  test('snapped slots and interactive light state persist', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await controller.toggleDecoration('desk_lamp');
+    await controller.placeDecoration(
+      id: 'desk_lamp',
+      position: const Offset(-.07, 0),
+      slotId: 'table_right',
+    );
+    await controller.toggleRoomItemInteraction('desk_lamp');
+
+    final restored = AppController(preferences);
+    await restored.restore();
+
+    expect(restored.roomPlacements['desk_lamp']?.slotId, 'table_right');
+    expect(restored.isRoomItemActive('desk_lamp'), isTrue);
   });
 }
 

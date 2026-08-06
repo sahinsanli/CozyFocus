@@ -221,6 +221,7 @@ class ProfileScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final badge = badges[index];
                     final unlocked =
+                        controller.testMode ||
                         controller.allTimeMinutes >= badge.threshold;
                     return _Badge(data: badge, unlocked: unlocked);
                   },

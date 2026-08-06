@@ -26,4 +26,12 @@ abstract final class AppAssets {
       'assets/visuals/focus_celebration_atlas.png';
   static const atmospherePreviewAtlas =
       'assets/visuals/atmosphere_preview_atlas.png';
+
+  static const emptyRoomBaseV2 = 'assets/visuals/v2/empty_room_base_v2.png';
+  static const mainItemAtlasV2 = 'assets/visuals/v2/main_item_atlas_v2.png';
+  static const rewardAvatarAtlasV2 =
+      'assets/visuals/v2/reward_avatar_atlas_v2.png';
+  static const craftingAtlasAV2 = 'assets/visuals/v2/crafting_atlas_a_v2.png';
+  static const craftingAtlasBV2 = 'assets/visuals/v2/crafting_atlas_b_v2.png';
+  static const craftingAtlasCV2 = 'assets/visuals/v2/crafting_atlas_c_v2.png';
 }

@@ -1,34 +1,42 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui' show Offset;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/decoration_item.dart';
+import '../models/app_progress.dart';
 import '../models/sound_item.dart';
 import 'audio_service.dart';
+import 'progress_repository.dart';
 import 'sound_effect_service.dart';
 
 enum FocusTimerStatus { idle, running, paused, complete }
 
 class AppController extends ChangeNotifier {
   AppController(
-    this._preferences, {
+    SharedPreferences preferences, {
     AudioService? audioService,
+    ProgressRepository? progressRepository,
     SoundEffectService? soundEffectService,
   }) : _audioService = audioService ?? MockAudioService(),
+       _progressRepository =
+           progressRepository ??
+           SharedPreferencesProgressRepository(preferences),
        _soundEffectService = soundEffectService ?? MockSoundEffectService();
 
-  final SharedPreferences _preferences;
   final AudioService _audioService;
+  final ProgressRepository _progressRepository;
   final SoundEffectService _soundEffectService;
   Timer? _ticker;
+  int? _timerEndEpochMs;
 
   String username = 'Selin';
   bool darkMode = false;
   bool focusReminders = true;
   bool autoStartBreaks = false;
+  bool testMode = true;
+  bool testPreviewActive = false;
   int dailyGoalMinutes = 120;
   int defaultFocusMinutes = 25;
   int shortBreakMinutes = 5;
@@ -40,17 +48,31 @@ class AppController extends ChangeNotifier {
   int lastRewardMinutes = 0;
 
   final Map<String, int> _dailyMinutes = {};
-  final Set<String> selectedDecorationIds = {'cactus'};
+  final Set<String> selectedDecorationIds = {};
+  final Set<String> _persistedSelectedDecorationIds = {};
   final Map<String, Offset> decorationPositions = {
-    'cactus': const Offset(.10, -.04),
-    'bookshelf': const Offset(.42, .08),
-    'sleeping_cat': const Offset(.38, .50),
-    'hanging_plant': const Offset(.56, -.62),
-    'armchair': const Offset(-.46, .34),
+    for (final item in decorationCatalog) item.id: item.defaultPosition,
+  };
+  final Map<String, Offset> _persistedDecorationPositions = {
+    for (final item in decorationCatalog) item.id: item.defaultPosition,
   };
   bool layoutSaved = false;
 
+  CraftProgress craftProgress = const CraftProgress();
+  final Map<String, InventoryEntry> inventoryEntries = {
+    for (final item in decorationCatalog)
+      item.id: InventoryEntry(itemId: item.id, status: InventoryStatus.locked),
+  };
+  final List<PendingReward> pendingRewards = [];
+  final Map<String, RoomPlacement> roomPlacements = {};
+  final Map<String, BadgeProgress> badgeProgress = {};
+  DailyRewardState dailyRewardState = const DailyRewardState();
+  String profileAvatarId = 'moonleaf';
+
   final Map<String, double> soundVolumes = {
+    for (final sound in soundCatalog) sound.id: 0,
+  };
+  final Map<String, double> _storedSoundVolumes = {
     for (final sound in soundCatalog) sound.id: 0,
   };
   String? audioErrorMessage;
@@ -101,9 +123,13 @@ class AppController extends ChangeNotifier {
     return streak;
   }
 
-  int get unlockedDecorationCount => decorationCatalog
-      .where((item) => allTimeMinutes >= item.unlockMinutes)
-      .length;
+  bool isDecorationUnlocked(DecorationItem item) =>
+      testMode ||
+      inventoryEntries[item.id]?.status != InventoryStatus.locked ||
+      allTimeMinutes >= item.unlockMinutes;
+
+  int get unlockedDecorationCount =>
+      decorationCatalog.where(isDecorationUnlocked).length;
 
   double get timerProgress {
     final total = activeSessionMinutes * 60;
@@ -112,66 +138,87 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> restore() async {
-    username = _preferences.getString('username') ?? username;
-    darkMode = _preferences.getBool('darkMode') ?? darkMode;
-    focusReminders = _preferences.getBool('focusReminders') ?? focusReminders;
-    autoStartBreaks =
-        _preferences.getBool('autoStartBreaks') ?? autoStartBreaks;
-    dailyGoalMinutes =
-        _preferences.getInt('dailyGoalMinutes') ?? dailyGoalMinutes;
-    defaultFocusMinutes =
-        _preferences.getInt('defaultFocusMinutes') ?? defaultFocusMinutes;
-    shortBreakMinutes =
-        _preferences.getInt('shortBreakMinutes') ?? shortBreakMinutes;
-    activeSessionMinutes =
-        _preferences.getInt('activeSessionMinutes') ?? defaultFocusMinutes;
-    remainingSeconds =
-        _preferences.getInt('remainingSeconds') ?? defaultFocusMinutes * 60;
+    final progress = await _progressRepository.load();
+    username = progress.username;
+    profileAvatarId = progress.profileAvatarId;
+    darkMode = progress.darkMode;
+    focusReminders = progress.focusReminders;
+    autoStartBreaks = progress.autoStartBreaks;
+    testMode = progress.testMode;
+    dailyGoalMinutes = progress.dailyGoalMinutes;
+    defaultFocusMinutes = progress.defaultFocusMinutes;
+    shortBreakMinutes = progress.shortBreakMinutes;
+    sleepTimerMinutes = progress.sleepTimerMinutes;
+    activeSessionMinutes = progress.timer.activeSessionMinutes;
+    remainingSeconds = progress.timer.remainingSeconds;
+    _timerEndEpochMs = progress.timer.endEpochMs;
 
-    final dailyJson = _preferences.getString('dailyMinutes');
-    if (dailyJson != null) {
-      final values = jsonDecode(dailyJson) as Map<String, dynamic>;
-      _dailyMinutes.addAll(
-        values.map((key, value) => MapEntry(key, value as int)),
-      );
-    }
-
+    _dailyMinutes
+      ..clear()
+      ..addAll(progress.dailyMinutes);
     selectedDecorationIds
       ..clear()
       ..addAll(
-        _preferences.getStringList('selectedDecorations') ?? const ['cactus'],
+        progress.selectedDecorationIds
+            .map(_currentDecorationId)
+            .where((id) => decorationCatalog.any((item) => item.id == id)),
       );
-
-    final positionsJson = _preferences.getString('decorationPositions');
-    if (positionsJson == null) {
-      // The illustrated room already contains a built-in bookshelf. Older
-      // layouts selected a second one by default, which looked duplicated.
-      selectedDecorationIds.remove('bookshelf');
+    _persistedSelectedDecorationIds
+      ..clear()
+      ..addAll(selectedDecorationIds);
+    decorationPositions.addAll({
+      for (final entry in progress.decorationPositions.entries)
+        _currentDecorationId(entry.key): Offset(entry.value.x, entry.value.y),
+    });
+    _persistedDecorationPositions
+      ..clear()
+      ..addAll(decorationPositions);
+    craftProgress = progress.craftProgress;
+    inventoryEntries.clear();
+    for (final entry in progress.inventory.entries) {
+      final itemId = _currentDecorationId(entry.key);
+      if (!decorationCatalog.any((item) => item.id == itemId)) continue;
+      inventoryEntries[itemId] = InventoryEntry(
+        itemId: itemId,
+        status: entry.value.status,
+        earnedAt: entry.value.earnedAt,
+        claimedAt: entry.value.claimedAt,
+      );
     }
-    if (positionsJson != null) {
-      final values = jsonDecode(positionsJson) as Map<String, dynamic>;
-      for (final entry in values.entries) {
-        final coordinates = entry.value as List<dynamic>;
-        if (coordinates.length == 2) {
-          decorationPositions[entry.key] = Offset(
-            (coordinates[0] as num).toDouble(),
-            (coordinates[1] as num).toDouble(),
-          );
-        }
-      }
+    pendingRewards
+      ..clear()
+      ..addAll(progress.pendingRewards);
+    roomPlacements.clear();
+    for (final entry in progress.roomPlacements.entries) {
+      final itemId = _currentDecorationId(entry.key);
+      if (!decorationCatalog.any((item) => item.id == itemId)) continue;
+      final item = decorationCatalog.firstWhere((item) => item.id == itemId);
+      roomPlacements[itemId] = RoomPlacement(
+        itemId: itemId,
+        slotId: entry.value.slotId ?? item.defaultSlotId,
+        layer: entry.value.layer == 0 ? item.layer.index : entry.value.layer,
+        position: entry.value.position,
+        interactionEnabled: entry.value.interactionEnabled,
+      );
     }
+    badgeProgress
+      ..clear()
+      ..addAll(progress.badges);
+    dailyRewardState = progress.dailyReward;
+    _storedSoundVolumes
+      ..clear()
+      ..addAll(progress.soundVolumes);
+    _syncLegacyProgressModels();
 
-    // Do not present a sound as active after a cold start unless playback has
-    // actually been started in this process.
+    // Persisted volumes are preferences only. Playback never resumes without
+    // an explicit user action after a cold start.
     for (final sound in soundCatalog) {
       soundVolumes[sound.id] = 0;
     }
-    sleepTimerMinutes =
-        _preferences.getInt('sleepTimerMinutes') ?? sleepTimerMinutes;
 
-    final savedStatus = _preferences.getString('timerStatus');
+    final savedStatus = progress.timer.status;
     if (savedStatus == FocusTimerStatus.running.name) {
-      final end = _preferences.getInt('timerEndEpochMs');
+      final end = progress.timer.endEpochMs;
       if (end != null) {
         final delta = end - DateTime.now().millisecondsSinceEpoch;
         if (delta <= 0) {
@@ -189,6 +236,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> startOrToggleTimer() async {
+    testPreviewActive = false;
     switch (timerStatus) {
       case FocusTimerStatus.idle:
       case FocusTimerStatus.complete:
@@ -216,6 +264,7 @@ class AppController extends ChangeNotifier {
     remainingSeconds = defaultFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
     showCelebration = false;
+    testPreviewActive = false;
     await _persistTimer();
     notifyListeners();
   }
@@ -245,67 +294,125 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> _completeSession() async {
+  Future<void> _completeSession({bool recordProgress = true}) async {
     _ticker?.cancel();
     final minutes = activeSessionMinutes;
-    final key = _dateKey(DateTime.now());
-    _dailyMinutes[key] = (_dailyMinutes[key] ?? 0) + minutes;
+    if (recordProgress) {
+      final key = _dateKey(DateTime.now());
+      _dailyMinutes[key] = (_dailyMinutes[key] ?? 0) + minutes;
+    }
     timerStatus = FocusTimerStatus.complete;
     remainingSeconds = 0;
     lastRewardMinutes = minutes;
     showCelebration = true;
     unawaited(_playEffect(AppSoundEffect.claimReward));
-    await _preferences.setString('dailyMinutes', jsonEncode(_dailyMinutes));
+    if (recordProgress) _syncLegacyProgressModels();
     await _persistTimer();
     notifyListeners();
+  }
+
+  int get testElapsedMinutes =>
+      ((activeSessionMinutes * 60 - remainingSeconds) / 60).floor().clamp(
+        0,
+        activeSessionMinutes,
+      );
+
+  Future<void> advanceTestFocus(int minutes) async {
+    if (!testMode || showCelebration) return;
+    _ticker?.cancel();
+    if (!testPreviewActive) {
+      activeSessionMinutes = defaultFocusMinutes;
+      remainingSeconds = activeSessionMinutes * 60;
+      testPreviewActive = true;
+    }
+    final previousStage = (timerProgress * 4).floor();
+    remainingSeconds = (remainingSeconds - minutes * 60).clamp(
+      0,
+      activeSessionMinutes * 60,
+    );
+    if (remainingSeconds == 0) {
+      await _completeSession(recordProgress: false);
+      return;
+    }
+    timerStatus = FocusTimerStatus.paused;
+    final nextStage = (timerProgress * 4).floor();
+    if (nextStage > previousStage && nextStage < 4) {
+      unawaited(_playDevelopmentEffect());
+    }
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> completeTestFocus() async {
+    if (!testMode) return;
+    _ticker?.cancel();
+    if (!testPreviewActive) {
+      activeSessionMinutes = defaultFocusMinutes;
+      remainingSeconds = activeSessionMinutes * 60;
+    }
+    testPreviewActive = true;
+    remainingSeconds = 0;
+    await _completeSession(recordProgress: false);
+  }
+
+  Future<void> setTestMode(bool value) async {
+    if (testMode == value) return;
+    testMode = value;
+    await resetTimer();
   }
 
   @visibleForTesting
   Future<void> recordCompletedSession(int minutes, {DateTime? on}) async {
     final key = _dateKey(on ?? DateTime.now());
     _dailyMinutes[key] = (_dailyMinutes[key] ?? 0) + minutes;
-    await _preferences.setString('dailyMinutes', jsonEncode(_dailyMinutes));
+    _syncLegacyProgressModels();
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> _persistTimer() async {
-    await _preferences.setString('timerStatus', timerStatus.name);
-    await _preferences.setInt('remainingSeconds', remainingSeconds);
-    await _preferences.setInt('activeSessionMinutes', activeSessionMinutes);
     if (timerStatus == FocusTimerStatus.running) {
-      await _preferences.setInt(
-        'timerEndEpochMs',
-        DateTime.now()
-            .add(Duration(seconds: remainingSeconds))
-            .millisecondsSinceEpoch,
-      );
+      _timerEndEpochMs = DateTime.now()
+          .add(Duration(seconds: remainingSeconds))
+          .millisecondsSinceEpoch;
     } else {
-      await _preferences.remove('timerEndEpochMs');
+      _timerEndEpochMs = null;
     }
+    await _persistProgress();
   }
 
   Future<void> toggleDecoration(String id) async {
     final item = decorationCatalog.firstWhere((item) => item.id == id);
-    if (allTimeMinutes < item.unlockMinutes) return;
+    if (!isDecorationUnlocked(item)) return;
     layoutSaved = false;
     final added = !selectedDecorationIds.remove(id);
-    if (added) selectedDecorationIds.add(id);
-    notifyListeners();
+    if (added) {
+      selectedDecorationIds.add(id);
+      decorationPositions[id] = item.defaultPosition;
+    }
+    _persistedSelectedDecorationIds
+      ..clear()
+      ..addAll(selectedDecorationIds);
+    _persistedDecorationPositions[id] =
+        decorationPositions[id] ?? item.defaultPosition;
+    _syncLegacyProgressModels();
+    _syncRoomPlacements();
+    await _persistProgress();
+    layoutSaved = true;
     if (added) unawaited(_playEffect(AppSoundEffect.puttingItem));
+    notifyListeners();
   }
 
   Future<void> saveLayout() async {
-    await _preferences.setStringList(
-      'selectedDecorations',
-      selectedDecorationIds.toList(),
-    );
-    await _preferences.setString(
-      'decorationPositions',
-      jsonEncode({
-        for (final entry in decorationPositions.entries)
-          entry.key: [entry.value.dx, entry.value.dy],
-      }),
-    );
+    _persistedSelectedDecorationIds
+      ..clear()
+      ..addAll(selectedDecorationIds);
+    _persistedDecorationPositions
+      ..clear()
+      ..addAll(decorationPositions);
+    _syncLegacyProgressModels();
+    _syncRoomPlacements();
+    await _persistProgress();
     layoutSaved = true;
     notifyListeners();
   }
@@ -321,6 +428,51 @@ class AppController extends ChangeNotifier {
 
   void finishMovingDecoration() {
     unawaited(_playEffect(AppSoundEffect.puttingItem));
+  }
+
+  Future<void> placeDecoration({
+    required String id,
+    required Offset position,
+    required String slotId,
+  }) async {
+    final item = decorationCatalog.firstWhere((item) => item.id == id);
+    final normalized = Offset(
+      position.dx.clamp(-.88, .88),
+      position.dy.clamp(-.80, .80),
+    );
+    decorationPositions[id] = normalized;
+    _persistedDecorationPositions[id] = normalized;
+    _persistedSelectedDecorationIds.add(id);
+    roomPlacements[id] = RoomPlacement(
+      itemId: id,
+      slotId: slotId,
+      layer: item.layer.index,
+      position: NormalizedPosition(normalized.dx, normalized.dy),
+      interactionEnabled: roomPlacements[id]?.interactionEnabled ?? false,
+    );
+    layoutSaved = true;
+    await _persistProgress();
+    unawaited(_playEffect(AppSoundEffect.puttingItem));
+    notifyListeners();
+  }
+
+  bool isRoomItemActive(String id) =>
+      roomPlacements[id]?.interactionEnabled ?? false;
+
+  Future<void> toggleRoomItemInteraction(String id) async {
+    final item = decorationCatalog.firstWhere((item) => item.id == id);
+    if (!item.isInteractive || !selectedDecorationIds.contains(id)) return;
+    final existing = roomPlacements[id];
+    final position = decorationPositions[id] ?? item.defaultPosition;
+    roomPlacements[id] = RoomPlacement(
+      itemId: id,
+      slotId: existing?.slotId ?? item.defaultSlotId,
+      layer: item.layer.index,
+      position: NormalizedPosition(position.dx, position.dy),
+      interactionEnabled: !(existing?.interactionEnabled ?? false),
+    );
+    await _persistProgress();
+    notifyListeners();
   }
 
   Future<void> playTapSound() => _playEffect(AppSoundEffect.click);
@@ -367,8 +519,9 @@ class AppController extends ChangeNotifier {
         await _audioService.play(id, .6);
         soundVolumes[id] = .6;
       }
+      _storedSoundVolumes[id] = soundVolumes[id]!;
       audioErrorMessage = null;
-      await _preferences.setDouble('volume_$id', soundVolumes[id]!);
+      await _persistProgress();
       notifyListeners();
       return true;
     } catch (_) {
@@ -391,11 +544,13 @@ class AppController extends ChangeNotifier {
         await _audioService.setVolume(id, value);
       }
       soundVolumes[id] = value;
+      _storedSoundVolumes[id] = value;
       audioErrorMessage = null;
-      await _preferences.setDouble('volume_$id', value);
+      await _persistProgress();
       notifyListeners();
     } catch (_) {
       soundVolumes[id] = 0;
+      _storedSoundVolumes[id] = 0;
       audioErrorMessage = 'The volume could not be changed.';
       notifyListeners();
     }
@@ -404,15 +559,16 @@ class AppController extends ChangeNotifier {
   Future<void> stopAllSounds() async {
     for (final id in soundVolumes.keys) {
       soundVolumes[id] = 0;
-      await _preferences.setDouble('volume_$id', 0);
+      _storedSoundVolumes[id] = 0;
     }
     await _audioService.stopAll();
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setSleepTimer(int minutes) async {
     sleepTimerMinutes = minutes;
-    await _preferences.setInt('sleepTimerMinutes', minutes);
+    await _persistProgress();
     notifyListeners();
   }
 
@@ -420,50 +576,144 @@ class AppController extends ChangeNotifier {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
     username = trimmed;
-    await _preferences.setString('username', trimmed);
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setDarkMode(bool value) async {
     darkMode = value;
-    await _preferences.setBool('darkMode', value);
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setFocusReminders(bool value) async {
     focusReminders = value;
-    await _preferences.setBool('focusReminders', value);
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setAutoStartBreaks(bool value) async {
     autoStartBreaks = value;
-    await _preferences.setBool('autoStartBreaks', value);
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setDailyGoal(int value) async {
     dailyGoalMinutes = value;
-    await _preferences.setInt('dailyGoalMinutes', value);
+    await _persistProgress();
     notifyListeners();
   }
 
   Future<void> setDefaultFocusMinutes(int value) async {
     defaultFocusMinutes = value;
-    await _preferences.setInt('defaultFocusMinutes', value);
     if (timerStatus == FocusTimerStatus.idle) {
       activeSessionMinutes = value;
       remainingSeconds = value * 60;
       await _persistTimer();
+    } else {
+      await _persistProgress();
     }
     notifyListeners();
   }
 
   Future<void> setShortBreakMinutes(int value) async {
     shortBreakMinutes = value;
-    await _preferences.setInt('shortBreakMinutes', value);
+    await _persistProgress();
     notifyListeners();
   }
+
+  void _syncLegacyProgressModels() {
+    for (final item in decorationCatalog) {
+      final existing = inventoryEntries[item.id];
+      if (existing?.status == InventoryStatus.crafting ||
+          existing?.status == InventoryStatus.pendingClaim) {
+        continue;
+      }
+      final placed = _persistedSelectedDecorationIds.contains(item.id);
+      final unlocked = placed || allTimeMinutes >= item.unlockMinutes;
+      inventoryEntries[item.id] = InventoryEntry(
+        itemId: item.id,
+        status: !unlocked
+            ? InventoryStatus.locked
+            : placed
+            ? InventoryStatus.placed
+            : InventoryStatus.owned,
+        earnedAt: existing?.earnedAt,
+        claimedAt: existing?.claimedAt,
+      );
+    }
+
+    for (final entry in const {
+      'first_bloom': 25,
+      'night_owl': 120,
+      'deep_woods': 300,
+      'zen_keeper': 600,
+    }.entries) {
+      final existing = badgeProgress[entry.key];
+      badgeProgress[entry.key] = BadgeProgress(
+        badgeId: entry.key,
+        earnedAt:
+            existing?.earnedAt ??
+            (allTimeMinutes >= entry.value ? DateTime.now() : null),
+        celebrationSeen: existing?.celebrationSeen ?? false,
+      );
+    }
+  }
+
+  void _syncRoomPlacements() {
+    roomPlacements.removeWhere(
+      (itemId, _) => !_persistedSelectedDecorationIds.contains(itemId),
+    );
+    for (final itemId in _persistedSelectedDecorationIds) {
+      final item = decorationCatalog.firstWhere((item) => item.id == itemId);
+      final position = _persistedDecorationPositions[itemId];
+      final existing = roomPlacements[itemId];
+      roomPlacements[itemId] = RoomPlacement(
+        itemId: itemId,
+        slotId: existing?.slotId ?? item.defaultSlotId,
+        layer: item.layer.index,
+        position: position == null
+            ? null
+            : NormalizedPosition(position.dx, position.dy),
+        interactionEnabled: existing?.interactionEnabled ?? false,
+      );
+    }
+  }
+
+  AppProgressV2 _progressSnapshot() => AppProgressV2(
+    username: username,
+    profileAvatarId: profileAvatarId,
+    darkMode: darkMode,
+    focusReminders: focusReminders,
+    autoStartBreaks: autoStartBreaks,
+    testMode: testMode,
+    dailyGoalMinutes: dailyGoalMinutes,
+    defaultFocusMinutes: defaultFocusMinutes,
+    shortBreakMinutes: shortBreakMinutes,
+    sleepTimerMinutes: sleepTimerMinutes,
+    dailyMinutes: Map.unmodifiable(_dailyMinutes),
+    selectedDecorationIds: List.unmodifiable(_persistedSelectedDecorationIds),
+    decorationPositions: {
+      for (final entry in _persistedDecorationPositions.entries)
+        entry.key: NormalizedPosition(entry.value.dx, entry.value.dy),
+    },
+    soundVolumes: Map.unmodifiable(_storedSoundVolumes),
+    timer: TimerSnapshot(
+      status: timerStatus.name,
+      remainingSeconds: remainingSeconds,
+      activeSessionMinutes: activeSessionMinutes,
+      endEpochMs: _timerEndEpochMs,
+    ),
+    craftProgress: craftProgress,
+    inventory: Map.unmodifiable(inventoryEntries),
+    pendingRewards: List.unmodifiable(pendingRewards),
+    roomPlacements: Map.unmodifiable(roomPlacements),
+    badges: Map.unmodifiable(badgeProgress),
+    dailyReward: dailyRewardState,
+  );
+
+  Future<void> _persistProgress() =>
+      _progressRepository.save(_progressSnapshot());
 
   String formatMinutes(int minutes) {
     if (minutes < 60) return '$minutes min';
@@ -476,6 +726,12 @@ class AppController extends ChangeNotifier {
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+
+  static String _currentDecorationId(String legacyId) => switch (legacyId) {
+    'cactus' => 'potted_plant',
+    'armchair' => 'chair',
+    _ => legacyId,
+  };
 
   @override
   void dispose() {

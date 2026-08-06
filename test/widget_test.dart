@@ -1,5 +1,6 @@
 import 'package:cozy_focus/app.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
+import 'package:cozy_focus/core/services/progress_repository.dart';
 import 'package:cozy_focus/core/services/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +32,8 @@ void main() {
     await tester.tap(find.text('Stats'));
     await tester.pumpAndSettle();
     expect(find.text('Your Journey'), findsOneWidget);
+    expect(find.text('Sleeping Cat'), findsOneWidget);
+    expect(find.text('Study Chair'), findsOneWidget);
 
     await tester.tap(find.text('Sounds'));
     await tester.pumpAndSettle();
@@ -56,6 +59,35 @@ void main() {
     await tester.tap(find.byKey(const Key('profile-button')));
     await tester.pumpAndSettle();
     expect(find.text('Earned Badges'), findsOneWidget);
+    expect(find.text('First Bloom'), findsOneWidget);
+    expect(find.text('Zen Keeper'), findsOneWidget);
+  });
+
+  testWidgets('test mode can advance and complete without changing stats', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.setDefaultFocusMinutes(15);
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    expect(find.text('Test Mode'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Advance 5 min'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advance 5 min'));
+    await tester.pumpAndSettle();
+    expect(controller.testElapsedMinutes, 5);
+    expect(find.text('TEST PREVIEW'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Complete focus now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Complete focus now'));
+    await tester.pumpAndSettle();
+    expect(find.text('Test session complete'), findsOneWidget);
+    expect(controller.allTimeMinutes, 0);
   });
 
   testWidgets('editing the profile name saves without a framework error', (
@@ -78,7 +110,10 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(controller.username, 'Sahin');
-    expect(preferences.getString('username'), 'Sahin');
+    final savedProgress = await SharedPreferencesProgressRepository(
+      preferences,
+    ).load();
+    expect(savedProgress.username, 'Sahin');
     expect(find.text('Sahin'), findsOneWidget);
   });
 
@@ -104,35 +139,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Moonleaf animates and room decorations can be dragged', (
+  testWidgets('room decorations snap to compatible slots and persist', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
+    await controller.toggleDecoration('desk');
     await tester.pumpWidget(CozyFocusApp(controller: controller));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Room'));
     await tester.pumpAndSettle();
 
-    final plant = find.byKey(const Key('room-decoration-cactus'));
-    expect(plant, findsOneWidget);
-    await tester.ensureVisible(plant);
+    final desk = find.byKey(const Key('room-decoration-desk'));
+    expect(desk, findsOneWidget);
+    await tester.ensureVisible(desk);
     await tester.pumpAndSettle();
-    await tester.tap(plant);
-    await tester.pump(const Duration(milliseconds: 800));
-    final gesture = await tester.startGesture(tester.getCenter(plant));
-    await gesture.moveBy(const Offset(22, 0));
+    final gesture = await tester.startGesture(tester.getCenter(desk));
+    await gesture.moveBy(const Offset(80, 0));
     await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(22, 0));
+    await gesture.moveBy(const Offset(80, 0));
     await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(22, 0));
+    await gesture.moveBy(const Offset(80, 0));
     await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(22, 0));
+    await gesture.moveBy(const Offset(80, 0));
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(controller.decorationPositions['cactus']!.dx, greaterThan(.1));
+    expect(controller.decorationPositions['desk']!.dx, greaterThan(.1));
+    expect(controller.roomPlacements['desk']?.slotId, isNotNull);
     expect(tester.takeException(), isNull);
   });
 

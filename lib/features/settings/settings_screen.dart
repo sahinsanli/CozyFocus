@@ -161,6 +161,16 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: controller.setAutoStartBreaks,
                         ),
                       ),
+                      const Divider(height: 1),
+                      _SettingsRow(
+                        icon: Icons.science_outlined,
+                        title: 'Test Mode',
+                        subtitle: 'Preview timers, rewards, and unlocks',
+                        trailing: Switch(
+                          value: controller.testMode,
+                          onChanged: controller.setTestMode,
+                        ),
+                      ),
                     ],
                   ),
                 ),

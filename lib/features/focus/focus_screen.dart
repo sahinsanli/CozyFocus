@@ -38,7 +38,9 @@ class FocusScreen extends StatelessWidget {
             children: [
               Text(
                 controller.showCelebration
-                    ? 'Beautiful work!'
+                    ? controller.testPreviewActive
+                          ? 'Preview complete!'
+                          : 'Beautiful work!'
                     : 'Ready to focus?',
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
@@ -46,7 +48,9 @@ class FocusScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 controller.showCelebration
-                    ? 'Your sanctuary grew a little calmer.'
+                    ? controller.testPreviewActive
+                          ? 'This is exactly what a completed focus session looks like.'
+                          : 'Your sanctuary grew a little calmer.'
                     : 'Settle in and give one thing your full attention.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -79,13 +83,20 @@ class FocusScreen extends StatelessWidget {
                   progress: controller.timerProgress,
                   time: time,
                   status: controller.timerStatus,
+                  testPreview: controller.testPreviewActive,
                 ),
-                const SizedBox(height: 30),
+                if (controller.testMode) ...[
+                  const SizedBox(height: 18),
+                  _TestModePanel(controller: controller),
+                ],
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   height: 60,
                   child: FilledButton.icon(
-                    onPressed: controller.startOrToggleTimer,
+                    onPressed: controller.testMode
+                        ? controller.completeTestFocus
+                        : controller.startOrToggleTimer,
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -93,8 +104,16 @@ class FocusScreen extends StatelessWidget {
                       textStyle: Theme.of(context).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    icon: Icon(_primaryIcon(controller.timerStatus)),
-                    label: Text(_primaryLabel(controller.timerStatus)),
+                    icon: Icon(
+                      controller.testMode
+                          ? Icons.fast_forward_rounded
+                          : _primaryIcon(controller.timerStatus),
+                    ),
+                    label: Text(
+                      controller.testMode
+                          ? 'Complete focus now'
+                          : _primaryLabel(controller.timerStatus),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -181,11 +200,13 @@ class _TimerRing extends StatelessWidget {
     required this.progress,
     required this.time,
     required this.status,
+    required this.testPreview,
   });
 
   final double progress;
   final String time;
   final FocusTimerStatus status;
+  final bool testPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +250,9 @@ class _TimerRing extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  status == FocusTimerStatus.running
+                  testPreview
+                      ? 'TEST PREVIEW'
+                      : status == FocusTimerStatus.running
                       ? 'FOCUSING'
                       : status == FocusTimerStatus.paused
                       ? 'PAUSED'
@@ -243,6 +266,77 @@ class _TimerRing extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TestModePanel extends StatelessWidget {
+  const _TestModePanel({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return CozyCard(
+      color: AppColors.terracottaSoft.withValues(alpha: .35),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.science_outlined, color: AppColors.terracotta),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'Test Mode',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Switch.adaptive(
+                value: controller.testMode,
+                onChanged: controller.setTestMode,
+              ),
+            ],
+          ),
+          Text(
+            controller.testPreviewActive
+                ? '${controller.testElapsedMinutes} of ${controller.activeSessionMinutes} minutes previewed'
+                : 'Preview focus checkpoints, rewards, badges, and every room item.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => controller.advanceTestFocus(5),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const FittedBox(child: Text('Advance 5 min')),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => controller.advanceTestFocus(10),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const FittedBox(child: Text('Advance 10 min')),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Preview sessions do not change your real statistics.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.terracotta,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -269,7 +363,9 @@ class _CelebrationCard extends StatelessWidget {
                 const _PlantGrowthCelebration(),
                 const SizedBox(height: 12),
                 Text(
-                  'Session complete',
+                  controller.testPreviewActive
+                      ? 'Test session complete'
+                      : 'Session complete',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
@@ -280,7 +376,12 @@ class _CelebrationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Reward: a little more life for your cozy room 🌿'),
+                Text(
+                  controller.testPreviewActive
+                      ? 'Preview only — your real focus statistics were not changed.'
+                      : 'Reward: a little more life for your cozy room 🌿',
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 22),
                 FilledButton(
                   onPressed: controller.resetTimer,

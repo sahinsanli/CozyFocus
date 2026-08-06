@@ -13,13 +13,17 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final upcoming = decorationCatalog
-        .where((item) => item.unlockMinutes > controller.allTimeMinutes)
-        .toList();
+    final upcoming = controller.testMode
+        ? decorationCatalog
+        : decorationCatalog
+              .where((item) => item.unlockMinutes > controller.allTimeMinutes)
+              .toList();
     final nextTarget = upcoming.isEmpty
         ? controller.allTimeMinutes
         : upcoming.first.unlockMinutes;
-    final progress = nextTarget == 0
+    final progress = controller.testMode
+        ? 1.0
+        : nextTarget == 0
         ? 1.0
         : (controller.allTimeMinutes / nextTarget).clamp(0.0, 1.0);
 
@@ -159,7 +163,9 @@ class StatsScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  upcoming.isEmpty
+                                  controller.testMode
+                                      ? 'Test Mode Showcase'
+                                      : upcoming.isEmpty
                                       ? 'Sanctuary Keeper'
                                       : upcoming.first.name,
                                   style: Theme.of(context).textTheme.titleMedium
@@ -185,7 +191,9 @@ class StatsScreen extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              upcoming.isEmpty
+                              controller.testMode
+                                  ? 'All rewards are available for preview.'
+                                  : upcoming.isEmpty
                                   ? 'Every room reward is unlocked.'
                                   : '${upcoming.first.unlockMinutes - controller.allTimeMinutes} focused minutes to unlock',
                               style: Theme.of(context).textTheme.bodySmall
@@ -213,8 +221,7 @@ class StatsScreen extends StatelessWidget {
                         title: Text('All decorations unlocked'),
                       )
                     else
-                      ...upcoming
-                          .take(3)
+                      ...(controller.testMode ? upcoming : upcoming.take(3))
                           .map(
                             (item) => ListTile(
                               dense: true,
@@ -225,11 +232,18 @@ class StatsScreen extends StatelessWidget {
                               ),
                               title: Text(item.name),
                               subtitle: Text(
-                                '${item.unlockMinutes} focus minutes',
+                                controller.testMode
+                                    ? 'Unlocked for preview'
+                                    : '${item.unlockMinutes} focus minutes',
                               ),
-                              trailing: const Icon(
-                                Icons.lock_outline,
+                              trailing: Icon(
+                                controller.testMode
+                                    ? Icons.check_circle_outline_rounded
+                                    : Icons.lock_outline,
                                 size: 20,
+                                color: controller.testMode
+                                    ? AppColors.sage
+                                    : null,
                               ),
                             ),
                           ),

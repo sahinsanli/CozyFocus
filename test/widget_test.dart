@@ -1,4 +1,6 @@
 import 'package:cozy_focus/app.dart';
+import 'package:cozy_focus/core/assets/app_assets.dart';
+import 'package:cozy_focus/core/models/decoration_item.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
 import 'package:cozy_focus/core/services/progress_repository.dart';
 import 'package:cozy_focus/core/services/audio_service.dart';
@@ -63,7 +65,7 @@ void main() {
     expect(find.text('Zen Keeper'), findsOneWidget);
   });
 
-  testWidgets('test mode can advance and complete without changing stats', (
+  testWidgets('test mode accelerates and saves normal focus progress', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -87,7 +89,8 @@ void main() {
     await tester.tap(find.text('Complete focus now'));
     await tester.pumpAndSettle();
     expect(find.text('Test session complete'), findsOneWidget);
-    expect(controller.allTimeMinutes, 0);
+    expect(controller.allTimeMinutes, 15);
+    expect(controller.craftProgress.accumulatedMinutes, 15);
   });
 
   testWidgets('editing the profile name saves without a framework error', (
@@ -117,6 +120,30 @@ void main() {
     expect(find.text('Sahin'), findsOneWidget);
   });
 
+  testWidgets('profile picture picker updates the shared avatar', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profile-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profile-avatar-edit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose your profile picture'), findsOneWidget);
+    await tester.tap(find.text('Sleepy Cat'));
+    await tester.pumpAndSettle();
+
+    expect(controller.profileAvatarId, 'cat');
+    final saved = await SharedPreferencesProgressRepository(preferences).load();
+    expect(saved.profileAvatarId, 'cat');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('core screens do not overflow on a narrow phone', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.binding.setSurfaceSize(const Size(320, 700));
@@ -139,13 +166,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('room decorations snap to compatible slots and persist', (
+  testWidgets('room decorations stay in their exclusive canonical homes', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
-    await controller.toggleDecoration('desk');
+    await controller.recordCompletedSession(30);
+    await controller.claimNextReward(place: true);
+    await controller.markBadgeCelebrationSeen('first_focus');
+    await controller.markBadgeCelebrationSeen('first_claim');
     await tester.pumpWidget(CozyFocusApp(controller: controller));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Room'));
@@ -155,19 +185,99 @@ void main() {
     expect(desk, findsOneWidget);
     await tester.ensureVisible(desk);
     await tester.pumpAndSettle();
+    final canonical = decorationCatalog.first.placement.position;
     final gesture = await tester.startGesture(tester.getCenter(desk));
-    await gesture.moveBy(const Offset(80, 0));
-    await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(80, 0));
-    await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(80, 0));
-    await tester.pump(const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(80, 0));
+    await gesture.moveBy(const Offset(240, 180));
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(controller.decorationPositions['desk']!.dx, greaterThan(.1));
-    expect(controller.roomPlacements['desk']?.slotId, isNotNull);
+    expect(controller.decorationPositions['desk'], canonical);
+    expect(controller.roomPlacements['desk']?.slotId, 'desk_home');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('gentle goal collection paints all eight reward previews', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Room'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Gentle Goal Collection'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    for (final item in dailyDecorationCatalog) {
+      expect(find.byKey(Key('gentle-goal-${item.id}')), findsOneWidget);
+    }
+    expect(find.text('Mystery'), findsNWidgets(8));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('completed room renders every fixed decoration in one scene', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.setDailyGoal(30);
+    final firstDay = DateTime(2026, 8, 1);
+    for (var day = 0; day < dailyDecorationCatalog.length; day++) {
+      await controller.recordCompletedSession(
+        day == 0 ? 2200 : 30,
+        on: firstDay.add(Duration(days: day)),
+      );
+      while (controller.nextPendingReward != null) {
+        await controller.claimNextReward(place: true);
+      }
+    }
+    for (final badgeId in controller.badgeProgress.keys.toList()) {
+      await controller.markBadgeCelebrationSeen(badgeId);
+    }
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pump(const Duration(seconds: 1));
+    if (find.text('Room Decoration').evaluate().isEmpty) {
+      await tester.tap(find.text('Room'));
+      await tester.pumpAndSettle();
+    }
+
+    final roomContext = tester.element(find.byKey(const Key('room-canvas')));
+    await tester.runAsync(() async {
+      await Future.wait([
+        precacheImage(const AssetImage(AppAssets.emptyRoomBaseV2), roomContext),
+        precacheImage(const AssetImage(AppAssets.mainItemAtlasV2), roomContext),
+        precacheImage(
+          const AssetImage(AppAssets.rewardAvatarAtlasV2),
+          roomContext,
+        ),
+      ]);
+    });
+    await tester.pumpAndSettle();
+
+    for (final item in decorationCatalog) {
+      expect(find.byKey(Key('room-decoration-${item.id}')), findsOneWidget);
+    }
+    for (final item in dailyDecorationCatalog) {
+      expect(find.byKey(Key('room-collectible-${item.id}')), findsOneWidget);
+    }
+    final roomRect = tester.getRect(find.byKey(const Key('room-canvas')));
+    expect(roomRect.width, greaterThan(300));
+    expect(roomRect.height, greaterThan(roomRect.width));
+    await expectLater(
+      find.byKey(const Key('room-canvas')),
+      matchesGoldenFile('goldens/completed_room.png'),
+    );
     expect(tester.takeException(), isNull);
   });
 

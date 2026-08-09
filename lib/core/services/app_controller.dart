@@ -6,12 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/decoration_item.dart';
 import '../models/app_progress.dart';
+import '../models/badge_definition.dart';
 import '../models/sound_item.dart';
 import 'audio_service.dart';
 import 'progress_repository.dart';
 import 'sound_effect_service.dart';
 
 enum FocusTimerStatus { idle, running, paused, complete }
+
+enum TimerSessionKind { focus, shortBreak }
 
 class AppController extends ChangeNotifier {
   AppController(
@@ -23,13 +26,17 @@ class AppController extends ChangeNotifier {
        _progressRepository =
            progressRepository ??
            SharedPreferencesProgressRepository(preferences),
-       _soundEffectService = soundEffectService ?? MockSoundEffectService();
+       _soundEffectService = soundEffectService ?? MockSoundEffectService() {
+    _initializeProductionState();
+  }
 
   final AudioService _audioService;
   final ProgressRepository _progressRepository;
   final SoundEffectService _soundEffectService;
   Timer? _ticker;
   int? _timerEndEpochMs;
+  Timer? _sleepTimerTicker;
+  int? _sleepTimerEndEpochMs;
 
   String username = 'Selin';
   bool darkMode = false;
@@ -42,6 +49,7 @@ class AppController extends ChangeNotifier {
   int shortBreakMinutes = 5;
 
   FocusTimerStatus timerStatus = FocusTimerStatus.idle;
+  TimerSessionKind timerSessionKind = TimerSessionKind.focus;
   int remainingSeconds = 25 * 60;
   int activeSessionMinutes = 25;
   bool showCelebration = false;
@@ -68,6 +76,7 @@ class AppController extends ChangeNotifier {
   final Map<String, BadgeProgress> badgeProgress = {};
   DailyRewardState dailyRewardState = const DailyRewardState();
   String profileAvatarId = 'moonleaf';
+  String? roomPlacementRequestId;
 
   final Map<String, double> soundVolumes = {
     for (final sound in soundCatalog) sound.id: 0,
@@ -77,6 +86,21 @@ class AppController extends ChangeNotifier {
   };
   String? audioErrorMessage;
   int sleepTimerMinutes = 30;
+  int sleepTimerRemainingSeconds = 0;
+  bool sleepTimerActive = false;
+  bool sleepTimerJustFinished = false;
+
+  bool get isBreakSession => timerSessionKind == TimerSessionKind.shortBreak;
+
+  int get activeSoundCount =>
+      soundVolumes.values.where((volume) => volume > 0).length;
+
+  String get sleepTimerLabel {
+    final minutes = sleepTimerRemainingSeconds ~/ 60;
+    final seconds = sleepTimerRemainingSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
 
   int get allTimeMinutes =>
       _dailyMinutes.values.fold(0, (sum, value) => sum + value);
@@ -123,13 +147,90 @@ class AppController extends ChangeNotifier {
     return streak;
   }
 
-  bool isDecorationUnlocked(DecorationItem item) =>
-      testMode ||
-      inventoryEntries[item.id]?.status != InventoryStatus.locked ||
-      allTimeMinutes >= item.unlockMinutes;
+  InventoryStatus inventoryStatus(String itemId) =>
+      inventoryEntries[itemId]?.status ?? InventoryStatus.locked;
+
+  bool isDecorationUnlocked(DecorationItem item) {
+    final status = inventoryStatus(item.id);
+    return status == InventoryStatus.owned || status == InventoryStatus.placed;
+  }
 
   int get unlockedDecorationCount =>
       decorationCatalog.where(isDecorationUnlocked).length;
+
+  DecorationItem? get currentCraftItem {
+    final activeId = craftProgress.activeItemId;
+    if (activeId == null) return null;
+    for (final item in decorationCatalog) {
+      if (item.id == activeId) return item;
+    }
+    return null;
+  }
+
+  double get currentCraftRatio {
+    final required = craftProgress.requiredMinutes;
+    if (required <= 0) return currentCraftItem == null ? 1 : 0;
+    return (craftProgress.accumulatedMinutes / required).clamp(0, 1);
+  }
+
+  int get currentCraftVisualStage => craftProgress.visualStage.clamp(0, 4);
+
+  _CraftPreviewState get _craftPreview {
+    final item = currentCraftItem;
+    if (item == null) return const _CraftPreviewState();
+    var previewItem = item;
+    var accumulated = craftProgress.accumulatedMinutes.toDouble();
+    var extra =
+        !isBreakSession &&
+            (timerStatus == FocusTimerStatus.running ||
+                timerStatus == FocusTimerStatus.paused)
+        ? (activeSessionMinutes * 60 - remainingSeconds) / 60
+        : 0.0;
+    var index = decorationCatalog.indexOf(previewItem);
+    while (extra > 0) {
+      final remaining = previewItem.unlockMinutes - accumulated;
+      if (extra < remaining || index == decorationCatalog.length - 1) {
+        accumulated = (accumulated + extra).clamp(
+          0,
+          previewItem.unlockMinutes.toDouble(),
+        );
+        break;
+      }
+      extra -= remaining;
+      index++;
+      previewItem = decorationCatalog[index];
+      accumulated = 0;
+    }
+    return _CraftPreviewState(
+      item: previewItem,
+      minutes: accumulated,
+      ratio: previewItem.unlockMinutes == 0
+          ? 1
+          : accumulated / previewItem.unlockMinutes,
+    );
+  }
+
+  DecorationItem? get previewCraftItem => _craftPreview.item;
+  int get previewCraftMinutes => _craftPreview.minutes.floor();
+  double get previewCraftRatio => _craftPreview.ratio;
+  int get previewCraftVisualStage => _visualStage(_craftPreview.ratio);
+
+  PendingReward? get nextPendingReward {
+    for (final reward in pendingRewards) {
+      if (reward.kind == PendingRewardKind.craftedItem) return reward;
+    }
+    return pendingRewards.isEmpty ? null : pendingRewards.first;
+  }
+
+  BadgeDefinition? get nextBadgeCelebration {
+    for (final badge in badgeCatalog) {
+      final progress = badgeProgress[badge.id];
+      if (progress?.earnedAt != null && !(progress?.celebrationSeen ?? true)) {
+        return badge;
+      }
+    }
+    return null;
+  }
 
   double get timerProgress {
     final total = activeSessionMinutes * 60;
@@ -152,6 +253,11 @@ class AppController extends ChangeNotifier {
     activeSessionMinutes = progress.timer.activeSessionMinutes;
     remainingSeconds = progress.timer.remainingSeconds;
     _timerEndEpochMs = progress.timer.endEpochMs;
+    timerSessionKind =
+        TimerSessionKind.values
+            .where((kind) => kind.name == progress.timer.sessionKind)
+            .firstOrNull ??
+        TimerSessionKind.focus;
 
     _dailyMinutes
       ..clear()
@@ -166,10 +272,14 @@ class AppController extends ChangeNotifier {
     _persistedSelectedDecorationIds
       ..clear()
       ..addAll(selectedDecorationIds);
-    decorationPositions.addAll({
-      for (final entry in progress.decorationPositions.entries)
-        _currentDecorationId(entry.key): Offset(entry.value.x, entry.value.y),
-    });
+    // Room V3 has one catalog-owned home per item. Legacy free-form
+    // coordinates are intentionally ignored so an old save cannot recreate an
+    // overlapping or floating room.
+    decorationPositions
+      ..clear()
+      ..addAll({
+        for (final item in decorationCatalog) item.id: item.placement.position,
+      });
     _persistedDecorationPositions
       ..clear()
       ..addAll(decorationPositions);
@@ -195,20 +305,41 @@ class AppController extends ChangeNotifier {
       final item = decorationCatalog.firstWhere((item) => item.id == itemId);
       roomPlacements[itemId] = RoomPlacement(
         itemId: itemId,
-        slotId: entry.value.slotId ?? item.defaultSlotId,
-        layer: entry.value.layer == 0 ? item.layer.index : entry.value.layer,
-        position: entry.value.position,
+        slotId: item.placement.slotId,
+        layer: item.placement.layer.index,
+        position: NormalizedPosition(
+          item.placement.position.dx,
+          item.placement.position.dy,
+        ),
         interactionEnabled: entry.value.interactionEnabled,
       );
     }
     badgeProgress
       ..clear()
       ..addAll(progress.badges);
-    dailyRewardState = progress.dailyReward;
+    final validCollectibleIds = dailyDecorationCatalog
+        .map((item) => item.id)
+        .toSet();
+    final claimedCollectibleIds = progress.dailyReward.claimedItemIds
+        .where(validCollectibleIds.contains)
+        .toSet();
+    final restoredPlacedCollectibles = progress.dailyReward.placedItemIds
+        .where(claimedCollectibleIds.contains)
+        .toSet();
+    dailyRewardState = progress.dailyReward.copyWith(
+      claimedItemIds: claimedCollectibleIds.toList(),
+      placedItemIds: progress.dailyReward.placementInitialized
+          ? restoredPlacedCollectibles.toList()
+          : claimedCollectibleIds.toList(),
+      placementInitialized: true,
+    );
     _storedSoundVolumes
       ..clear()
       ..addAll(progress.soundVolumes);
+    _initializeProductionState();
+    _repairPlacementDependencies();
     _syncLegacyProgressModels();
+    _syncRoomPlacements();
 
     // Persisted volumes are preferences only. Playback never resumes without
     // an explicit user action after a cold start.
@@ -222,7 +353,11 @@ class AppController extends ChangeNotifier {
       if (end != null) {
         final delta = end - DateTime.now().millisecondsSinceEpoch;
         if (delta <= 0) {
-          await _completeSession();
+          if (isBreakSession) {
+            await _completeBreak();
+          } else {
+            await _completeSession();
+          }
         } else {
           remainingSeconds = (delta / 1000).ceil();
           timerStatus = FocusTimerStatus.running;
@@ -232,6 +367,9 @@ class AppController extends ChangeNotifier {
     } else if (savedStatus == FocusTimerStatus.paused.name) {
       timerStatus = FocusTimerStatus.paused;
     }
+    // Rewrite legacy room coordinates using the canonical layout during the
+    // first restore. Ownership and interaction state remain untouched.
+    await _persistProgress();
     notifyListeners();
   }
 
@@ -241,6 +379,7 @@ class AppController extends ChangeNotifier {
       case FocusTimerStatus.idle:
       case FocusTimerStatus.complete:
         showCelebration = false;
+        timerSessionKind = TimerSessionKind.focus;
         activeSessionMinutes = defaultFocusMinutes;
         if (timerStatus == FocusTimerStatus.complete || remainingSeconds <= 0) {
           remainingSeconds = activeSessionMinutes * 60;
@@ -260,6 +399,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> resetTimer() async {
     _ticker?.cancel();
+    timerSessionKind = TimerSessionKind.focus;
     activeSessionMinutes = defaultFocusMinutes;
     remainingSeconds = defaultFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
@@ -274,20 +414,62 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> continueAfterCelebration() async {
+    showCelebration = false;
+    testPreviewActive = false;
+    if (!isBreakSession) {
+      timerSessionKind = TimerSessionKind.focus;
+      activeSessionMinutes = defaultFocusMinutes;
+      remainingSeconds = defaultFocusMinutes * 60;
+      timerStatus = FocusTimerStatus.idle;
+    }
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> startBreak() async {
+    _ticker?.cancel();
+    showCelebration = false;
+    testPreviewActive = false;
+    timerSessionKind = TimerSessionKind.shortBreak;
+    activeSessionMinutes = shortBreakMinutes;
+    remainingSeconds = shortBreakMinutes * 60;
+    timerStatus = FocusTimerStatus.running;
+    _startTicker();
+    await _persistTimer();
+    notifyListeners();
+  }
+
   void _startTicker() {
     _ticker?.cancel();
-    var developmentStage = (timerProgress * 4).floor();
+    var preview = _craftPreview;
+    var developmentStage = _visualStage(preview.ratio);
+    var developmentItemId = preview.item?.id;
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (remainingSeconds <= 1) {
         remainingSeconds = 0;
         _ticker?.cancel();
-        await _completeSession();
+        if (isBreakSession) {
+          await _completeBreak();
+        } else {
+          await _completeSession();
+        }
       } else {
         remainingSeconds--;
-        final nextStage = (timerProgress * 4).floor();
-        if (nextStage > developmentStage && nextStage < 4) {
-          developmentStage = nextStage;
-          unawaited(_playDevelopmentEffect());
+        if (!isBreakSession) {
+          preview = _craftPreview;
+          final nextStage = _visualStage(preview.ratio);
+          if (preview.item?.id == developmentItemId &&
+              nextStage > developmentStage &&
+              nextStage < 4) {
+            developmentStage = nextStage;
+            final item = preview.item;
+            final effect = item == null ? null : _developmentEffectFor(item);
+            if (effect != null) unawaited(_playEffect(effect));
+          } else if (preview.item?.id != developmentItemId) {
+            developmentItemId = preview.item?.id;
+            developmentStage = nextStage;
+          }
         }
         notifyListeners();
       }
@@ -299,15 +481,42 @@ class AppController extends ChangeNotifier {
     final minutes = activeSessionMinutes;
     if (recordProgress) {
       final key = _dateKey(DateTime.now());
+      final previousToday = _dailyMinutes[key] ?? 0;
       _dailyMinutes[key] = (_dailyMinutes[key] ?? 0) + minutes;
+      _applyFocusMinutes(minutes);
+      _maybeCreateDailyReward(
+        dateKey: key,
+        previousMinutes: previousToday,
+        currentMinutes: _dailyMinutes[key]!,
+      );
+      _evaluateBadges(successfulFocus: true);
     }
     timerStatus = FocusTimerStatus.complete;
     remainingSeconds = 0;
     lastRewardMinutes = minutes;
     showCelebration = true;
-    unawaited(_playEffect(AppSoundEffect.claimReward));
+    if (!recordProgress) unawaited(_playEffect(AppSoundEffect.claimReward));
     if (recordProgress) _syncLegacyProgressModels();
+    if (autoStartBreaks) {
+      timerSessionKind = TimerSessionKind.shortBreak;
+      activeSessionMinutes = shortBreakMinutes;
+      remainingSeconds = shortBreakMinutes * 60;
+      timerStatus = FocusTimerStatus.running;
+      _startTicker();
+    }
     await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> _completeBreak() async {
+    _ticker?.cancel();
+    timerSessionKind = TimerSessionKind.focus;
+    activeSessionMinutes = defaultFocusMinutes;
+    remainingSeconds = defaultFocusMinutes * 60;
+    timerStatus = FocusTimerStatus.idle;
+    showCelebration = false;
+    await _persistTimer();
+    unawaited(_playEffect(AppSoundEffect.click));
     notifyListeners();
   }
 
@@ -325,19 +534,25 @@ class AppController extends ChangeNotifier {
       remainingSeconds = activeSessionMinutes * 60;
       testPreviewActive = true;
     }
-    final previousStage = (timerProgress * 4).floor();
+    final previousPreview = _craftPreview;
     remainingSeconds = (remainingSeconds - minutes * 60).clamp(
       0,
       activeSessionMinutes * 60,
     );
     if (remainingSeconds == 0) {
-      await _completeSession(recordProgress: false);
+      await _completeSession();
       return;
     }
     timerStatus = FocusTimerStatus.paused;
-    final nextStage = (timerProgress * 4).floor();
-    if (nextStage > previousStage && nextStage < 4) {
-      unawaited(_playDevelopmentEffect());
+    final nextPreview = _craftPreview;
+    final previousStage = _visualStage(previousPreview.ratio);
+    final nextStage = _visualStage(nextPreview.ratio);
+    if (previousPreview.item?.id == nextPreview.item?.id &&
+        nextStage > previousStage &&
+        nextStage < 4) {
+      final item = nextPreview.item;
+      final effect = item == null ? null : _developmentEffectFor(item);
+      if (effect != null) unawaited(_playEffect(effect));
     }
     await _persistTimer();
     notifyListeners();
@@ -352,19 +567,29 @@ class AppController extends ChangeNotifier {
     }
     testPreviewActive = true;
     remainingSeconds = 0;
-    await _completeSession(recordProgress: false);
+    await _completeSession();
   }
 
   Future<void> setTestMode(bool value) async {
     if (testMode == value) return;
     testMode = value;
+    if (!value && sleepTimerMinutes == 1) sleepTimerMinutes = 15;
     await resetTimer();
   }
 
   @visibleForTesting
   Future<void> recordCompletedSession(int minutes, {DateTime? on}) async {
-    final key = _dateKey(on ?? DateTime.now());
+    final completedOn = on ?? DateTime.now();
+    final key = _dateKey(completedOn);
+    final previousMinutes = _dailyMinutes[key] ?? 0;
     _dailyMinutes[key] = (_dailyMinutes[key] ?? 0) + minutes;
+    _applyFocusMinutes(minutes);
+    _maybeCreateDailyReward(
+      dateKey: key,
+      previousMinutes: previousMinutes,
+      currentMinutes: _dailyMinutes[key]!,
+    );
+    _evaluateBadges(successfulFocus: true);
     _syncLegacyProgressModels();
     await _persistProgress();
     notifyListeners();
@@ -384,17 +609,15 @@ class AppController extends ChangeNotifier {
   Future<void> toggleDecoration(String id) async {
     final item = decorationCatalog.firstWhere((item) => item.id == id);
     if (!isDecorationUnlocked(item)) return;
-    layoutSaved = false;
-    final added = !selectedDecorationIds.remove(id);
-    if (added) {
-      selectedDecorationIds.add(id);
-      decorationPositions[id] = item.defaultPosition;
+    var added = false;
+    if (!selectedDecorationIds.contains(id)) {
+      added = _placeInCanonicalHome(item);
+    } else {
+      _storeWithDependents(item.id);
     }
     _persistedSelectedDecorationIds
       ..clear()
       ..addAll(selectedDecorationIds);
-    _persistedDecorationPositions[id] =
-        decorationPositions[id] ?? item.defaultPosition;
     _syncLegacyProgressModels();
     _syncRoomPlacements();
     await _persistProgress();
@@ -403,57 +626,136 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveLayout() async {
+  bool _placeInCanonicalHome(DecorationItem item) {
+    final supportId = item.placement.supportItemId;
+    if (supportId != null && !selectedDecorationIds.contains(supportId)) {
+      final support = decorationCatalog.firstWhere(
+        (candidate) => candidate.id == supportId,
+      );
+      if (!isDecorationUnlocked(support) || !_placeInCanonicalHome(support)) {
+        return false;
+      }
+    }
+    selectedDecorationIds.add(item.id);
+    decorationPositions[item.id] = item.placement.position;
+    _persistedDecorationPositions[item.id] = item.placement.position;
+    inventoryEntries[item.id] = inventoryEntries[item.id]!.copyWith(
+      status: InventoryStatus.placed,
+    );
+    return true;
+  }
+
+  void _storeWithDependents(String itemId) {
+    for (final dependent in decorationCatalog.where(
+      (item) => item.placement.supportItemId == itemId,
+    )) {
+      if (selectedDecorationIds.contains(dependent.id)) {
+        _storeWithDependents(dependent.id);
+      }
+    }
+    final retainedCollectibles = dailyRewardState.placedItemIds.where((id) {
+      final collectible = dailyDecorationCatalog.firstWhere(
+        (item) => item.id == id,
+      );
+      return collectible.placement.supportItemId != itemId;
+    }).toList();
+    if (retainedCollectibles.length != dailyRewardState.placedItemIds.length) {
+      dailyRewardState = dailyRewardState.copyWith(
+        placedItemIds: retainedCollectibles,
+        placementInitialized: true,
+      );
+    }
+    selectedDecorationIds.remove(itemId);
+    final existing = inventoryEntries[itemId];
+    if (existing != null && existing.status == InventoryStatus.placed) {
+      inventoryEntries[itemId] = existing.copyWith(
+        status: InventoryStatus.owned,
+      );
+    }
+  }
+
+  bool isCollectiblePlaced(String id) =>
+      dailyRewardState.placedItemIds.contains(id);
+
+  bool canPlaceCollectible(CollectibleDecoration item) {
+    if (!dailyRewardState.claimedItemIds.contains(item.id)) return false;
+    final supportId = item.placement.supportItemId;
+    if (supportId == null || selectedDecorationIds.contains(supportId)) {
+      return true;
+    }
+    final support = decorationCatalog.firstWhere(
+      (candidate) => candidate.id == supportId,
+    );
+    return isDecorationUnlocked(support);
+  }
+
+  bool _placeCollectibleInCanonicalHome(CollectibleDecoration item) {
+    final supportId = item.placement.supportItemId;
+    if (supportId != null && !selectedDecorationIds.contains(supportId)) {
+      final support = decorationCatalog.firstWhere(
+        (candidate) => candidate.id == supportId,
+      );
+      if (!isDecorationUnlocked(support) || !_placeInCanonicalHome(support)) {
+        return false;
+      }
+    }
+    dailyRewardState = dailyRewardState.copyWith(
+      placedItemIds: {...dailyRewardState.placedItemIds, item.id}.toList(),
+      placementInitialized: true,
+    );
+    return true;
+  }
+
+  Future<void> toggleCollectibleDecoration(String id) async {
+    if (!dailyRewardState.claimedItemIds.contains(id)) return;
+    final item = dailyDecorationCatalog.firstWhere((item) => item.id == id);
+    var placed = false;
+    if (isCollectiblePlaced(id)) {
+      dailyRewardState = dailyRewardState.copyWith(
+        placedItemIds: dailyRewardState.placedItemIds
+            .where((placedId) => placedId != id)
+            .toList(),
+        placementInitialized: true,
+      );
+    } else {
+      placed = _placeCollectibleInCanonicalHome(item);
+    }
     _persistedSelectedDecorationIds
       ..clear()
       ..addAll(selectedDecorationIds);
-    _persistedDecorationPositions
-      ..clear()
-      ..addAll(decorationPositions);
     _syncLegacyProgressModels();
     _syncRoomPlacements();
     await _persistProgress();
     layoutSaved = true;
+    if (placed) unawaited(_playEffect(AppSoundEffect.puttingItem));
     notifyListeners();
   }
 
-  void moveDecoration(String id, Offset position) {
-    decorationPositions[id] = Offset(
-      position.dx.clamp(-.88, .88),
-      position.dy.clamp(-.80, .80),
-    );
-    layoutSaved = false;
-    notifyListeners();
-  }
-
-  void finishMovingDecoration() {
-    unawaited(_playEffect(AppSoundEffect.puttingItem));
-  }
-
-  Future<void> placeDecoration({
-    required String id,
-    required Offset position,
-    required String slotId,
-  }) async {
-    final item = decorationCatalog.firstWhere((item) => item.id == id);
-    final normalized = Offset(
-      position.dx.clamp(-.88, .88),
-      position.dy.clamp(-.80, .80),
-    );
-    decorationPositions[id] = normalized;
-    _persistedDecorationPositions[id] = normalized;
-    _persistedSelectedDecorationIds.add(id);
-    roomPlacements[id] = RoomPlacement(
-      itemId: id,
-      slotId: slotId,
-      layer: item.layer.index,
-      position: NormalizedPosition(normalized.dx, normalized.dy),
-      interactionEnabled: roomPlacements[id]?.interactionEnabled ?? false,
-    );
-    layoutSaved = true;
-    await _persistProgress();
-    unawaited(_playEffect(AppSoundEffect.puttingItem));
-    notifyListeners();
+  void _repairPlacementDependencies() {
+    for (final item in decorationCatalog) {
+      if (!selectedDecorationIds.contains(item.id)) continue;
+      final supportId = item.placement.supportItemId;
+      if (supportId == null || selectedDecorationIds.contains(supportId)) {
+        continue;
+      }
+      final support = decorationCatalog.firstWhere(
+        (candidate) => candidate.id == supportId,
+      );
+      if (isDecorationUnlocked(support)) {
+        _placeInCanonicalHome(support);
+      } else {
+        selectedDecorationIds.remove(item.id);
+        final existing = inventoryEntries[item.id];
+        if (existing != null) {
+          inventoryEntries[item.id] = existing.copyWith(
+            status: InventoryStatus.owned,
+          );
+        }
+      }
+    }
+    _persistedSelectedDecorationIds
+      ..clear()
+      ..addAll(selectedDecorationIds);
   }
 
   bool isRoomItemActive(String id) =>
@@ -463,11 +765,11 @@ class AppController extends ChangeNotifier {
     final item = decorationCatalog.firstWhere((item) => item.id == id);
     if (!item.isInteractive || !selectedDecorationIds.contains(id)) return;
     final existing = roomPlacements[id];
-    final position = decorationPositions[id] ?? item.defaultPosition;
+    final position = item.placement.position;
     roomPlacements[id] = RoomPlacement(
       itemId: id,
-      slotId: existing?.slotId ?? item.defaultSlotId,
-      layer: item.layer.index,
+      slotId: item.placement.slotId,
+      layer: item.placement.layer.index,
       position: NormalizedPosition(position.dx, position.dy),
       interactionEnabled: !(existing?.interactionEnabled ?? false),
     );
@@ -477,30 +779,318 @@ class AppController extends ChangeNotifier {
 
   Future<void> playTapSound() => _playEffect(AppSoundEffect.click);
 
+  void acknowledgeRoomPlacementRequest() {
+    roomPlacementRequestId = null;
+  }
+
   AppSoundEffect? get developmentSoundEffect {
-    final upcoming =
-        decorationCatalog
-            .where((item) => item.unlockMinutes > allTimeMinutes)
-            .toList()
-          ..sort((a, b) => a.unlockMinutes.compareTo(b.unlockMinutes));
-    if (upcoming.isEmpty) return null;
-    final item = upcoming.first;
+    final item = currentCraftItem;
+    if (item == null) return null;
+    return _developmentEffectFor(item);
+  }
+
+  AppSoundEffect? _developmentEffectFor(DecorationItem item) {
     if (item.id == 'sleeping_cat') return AppSoundEffect.catMeow;
     if (item.category == 'Furniture') return AppSoundEffect.woodCut;
     return null;
   }
 
-  Future<void> _playDevelopmentEffect() async {
-    final effect = developmentSoundEffect;
-    if (effect != null) await _playEffect(effect);
-  }
-
   Future<void> _playEffect(AppSoundEffect effect) async {
     try {
       await _soundEffectService.play(effect);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Sound effect $effect failed: $error\n$stackTrace');
       // Sound feedback should never interrupt a focus session or interaction.
     }
+  }
+
+  void _initializeProductionState() {
+    for (final item in decorationCatalog) {
+      inventoryEntries.putIfAbsent(
+        item.id,
+        () => InventoryEntry(itemId: item.id, status: InventoryStatus.locked),
+      );
+    }
+    pendingRewards.removeWhere(
+      (reward) =>
+          reward.kind == PendingRewardKind.craftedItem &&
+          !decorationCatalog.any((item) => item.id == reward.itemId),
+    );
+
+    final active = currentCraftItem;
+    if (active != null &&
+        inventoryStatus(active.id) != InventoryStatus.pendingClaim &&
+        inventoryStatus(active.id) != InventoryStatus.owned &&
+        inventoryStatus(active.id) != InventoryStatus.placed) {
+      final accumulated = craftProgress.accumulatedMinutes.clamp(
+        0,
+        active.unlockMinutes,
+      );
+      inventoryEntries[active.id] = inventoryEntries[active.id]!.copyWith(
+        status: accumulated > 0
+            ? InventoryStatus.crafting
+            : InventoryStatus.locked,
+      );
+      craftProgress = CraftProgress(
+        activeItemId: active.id,
+        accumulatedMinutes: accumulated,
+        carryoverMinutes: craftProgress.carryoverMinutes,
+        requiredMinutes: active.unlockMinutes,
+        visualStage: _visualStage(accumulated / active.unlockMinutes),
+      );
+      return;
+    }
+    _selectNextCraftItem(carryover: craftProgress.carryoverMinutes);
+  }
+
+  void _selectNextCraftItem({int carryover = 0}) {
+    DecorationItem? next;
+    for (final item in decorationCatalog) {
+      final status = inventoryStatus(item.id);
+      if (status == InventoryStatus.locked ||
+          status == InventoryStatus.crafting) {
+        next = item;
+        break;
+      }
+    }
+    if (next == null) {
+      craftProgress = CraftProgress(carryoverMinutes: carryover);
+      return;
+    }
+    inventoryEntries[next.id] = inventoryEntries[next.id]!.copyWith(
+      status: carryover > 0 ? InventoryStatus.crafting : InventoryStatus.locked,
+    );
+    craftProgress = CraftProgress(
+      activeItemId: next.id,
+      accumulatedMinutes: 0,
+      carryoverMinutes: carryover,
+      requiredMinutes: next.unlockMinutes,
+      visualStage: 0,
+    );
+  }
+
+  void _applyFocusMinutes(int minutes) {
+    if (minutes <= 0) return;
+    var available = minutes + craftProgress.carryoverMinutes;
+    craftProgress = CraftProgress(
+      activeItemId: craftProgress.activeItemId,
+      accumulatedMinutes: craftProgress.accumulatedMinutes,
+      requiredMinutes: craftProgress.requiredMinutes,
+      visualStage: craftProgress.visualStage,
+    );
+
+    while (available > 0 && currentCraftItem != null) {
+      final item = currentCraftItem!;
+      final before = craftProgress.accumulatedMinutes;
+      final required = item.unlockMinutes;
+      final used = available.clamp(0, required - before);
+      final after = before + used;
+      final beforeStage = _visualStage(before / required);
+      final afterStage = _visualStage(after / required);
+      available -= used;
+
+      if (afterStage > beforeStage && after < required) {
+        final effect = _developmentEffectFor(item);
+        if (effect != null) unawaited(_playEffect(effect));
+      }
+
+      if (after >= required) {
+        final earnedAt = DateTime.now();
+        inventoryEntries[item.id] = InventoryEntry(
+          itemId: item.id,
+          status: InventoryStatus.pendingClaim,
+          earnedAt: earnedAt,
+        );
+        if (!pendingRewards.any(
+          (reward) =>
+              reward.kind == PendingRewardKind.craftedItem &&
+              reward.itemId == item.id,
+        )) {
+          pendingRewards.add(
+            PendingReward(
+              id: 'crafted-${item.id}-${earnedAt.millisecondsSinceEpoch}',
+              kind: PendingRewardKind.craftedItem,
+              itemId: item.id,
+              earnedAt: earnedAt,
+            ),
+          );
+        }
+        unawaited(_playEffect(AppSoundEffect.claimReward));
+        _selectNextCraftItem(carryover: available);
+        if (currentCraftItem == null) break;
+        craftProgress = CraftProgress(
+          activeItemId: craftProgress.activeItemId,
+          accumulatedMinutes: craftProgress.accumulatedMinutes,
+          carryoverMinutes: 0,
+          requiredMinutes: craftProgress.requiredMinutes,
+          visualStage: craftProgress.visualStage,
+        );
+      } else {
+        inventoryEntries[item.id] = inventoryEntries[item.id]!.copyWith(
+          status: InventoryStatus.crafting,
+        );
+        craftProgress = CraftProgress(
+          activeItemId: item.id,
+          accumulatedMinutes: after,
+          requiredMinutes: required,
+          visualStage: afterStage,
+        );
+      }
+    }
+  }
+
+  void _maybeCreateDailyReward({
+    required String dateKey,
+    required int previousMinutes,
+    required int currentMinutes,
+  }) {
+    if (previousMinutes >= dailyGoalMinutes ||
+        currentMinutes < dailyGoalMinutes ||
+        dailyRewardState.completedDateKey == dateKey) {
+      return;
+    }
+    final claimed = dailyRewardState.claimedItemIds.toSet();
+    final pendingDailyIds = pendingRewards
+        .where((reward) => reward.kind == PendingRewardKind.dailyDecoration)
+        .map((reward) => reward.itemId)
+        .toSet();
+    CollectibleDecoration? rewardItem;
+    for (final item in dailyDecorationCatalog) {
+      if (!claimed.contains(item.id) && !pendingDailyIds.contains(item.id)) {
+        rewardItem = item;
+        break;
+      }
+    }
+    if (rewardItem == null) {
+      dailyRewardState = dailyRewardState.copyWith(completedDateKey: dateKey);
+      return;
+    }
+    final earnedAt = DateTime.now();
+    final reward = PendingReward(
+      id: 'daily-${rewardItem.id}-${earnedAt.millisecondsSinceEpoch}',
+      kind: PendingRewardKind.dailyDecoration,
+      itemId: rewardItem.id,
+      earnedAt: earnedAt,
+    );
+    pendingRewards.add(reward);
+    dailyRewardState = dailyRewardState.copyWith(
+      completedDateKey: dateKey,
+      pendingRewardId: reward.id,
+    );
+    _evaluateBadges(dailyGoal: true);
+    unawaited(_playEffect(AppSoundEffect.claimReward));
+  }
+
+  Future<void> claimNextReward({required bool place}) async {
+    final reward = nextPendingReward;
+    if (reward == null) return;
+    pendingRewards.removeWhere((entry) => entry.id == reward.id);
+    if (reward.kind == PendingRewardKind.craftedItem) {
+      final item = decorationCatalog.firstWhere(
+        (item) => item.id == reward.itemId,
+      );
+      final claimedAt = DateTime.now();
+      inventoryEntries[item.id] = inventoryEntries[item.id]!.copyWith(
+        status: place ? InventoryStatus.placed : InventoryStatus.owned,
+        claimedAt: claimedAt,
+      );
+      if (place) {
+        final placed = _placeInCanonicalHome(item);
+        if (!placed) {
+          inventoryEntries[item.id] = inventoryEntries[item.id]!.copyWith(
+            status: InventoryStatus.owned,
+          );
+        }
+        _persistedSelectedDecorationIds
+          ..clear()
+          ..addAll(selectedDecorationIds);
+        _syncRoomPlacements();
+        if (placed) {
+          roomPlacementRequestId = item.id;
+          unawaited(_playEffect(AppSoundEffect.puttingItem));
+        }
+      }
+      _evaluateBadges(itemClaim: true);
+    } else {
+      final claimed = {...dailyRewardState.claimedItemIds, reward.itemId};
+      dailyRewardState = dailyRewardState.copyWith(
+        claimedItemIds: claimed.toList(),
+        clearPendingReward: dailyRewardState.pendingRewardId == reward.id,
+        placementInitialized: true,
+      );
+      if (place) {
+        final item = dailyDecorationCatalog.firstWhere(
+          (item) => item.id == reward.itemId,
+        );
+        final placed = _placeCollectibleInCanonicalHome(item);
+        if (placed) {
+          _persistedSelectedDecorationIds
+            ..clear()
+            ..addAll(selectedDecorationIds);
+          _syncLegacyProgressModels();
+          _syncRoomPlacements();
+          roomPlacementRequestId = item.id;
+          unawaited(_playEffect(AppSoundEffect.puttingItem));
+        }
+      }
+    }
+    showCelebration = pendingRewards.isNotEmpty;
+    if (!showCelebration) testPreviewActive = false;
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  void _evaluateBadges({
+    bool successfulFocus = false,
+    bool itemClaim = false,
+    bool dailyGoal = false,
+    bool mixer = false,
+  }) {
+    var earnedNewBadge = false;
+    final roomComplete = decorationCatalog.every((item) {
+      final status = inventoryStatus(item.id);
+      return status == InventoryStatus.owned ||
+          status == InventoryStatus.placed;
+    });
+    for (final badge in badgeCatalog) {
+      final existing = badgeProgress[badge.id];
+      if (existing?.earnedAt != null) continue;
+      final earned = switch (badge.criterion) {
+        BadgeCriterion.firstFocus => successfulFocus,
+        BadgeCriterion.firstClaim => itemClaim,
+        BadgeCriterion.firstDailyGoal => dailyGoal,
+        BadgeCriterion.soundMixer => mixer,
+        BadgeCriterion.totalFocusMinutes => allTimeMinutes >= badge.threshold,
+        BadgeCriterion.roomComplete => roomComplete,
+      };
+      badgeProgress[badge.id] = BadgeProgress(
+        badgeId: badge.id,
+        earnedAt: earned ? DateTime.now() : null,
+        celebrationSeen: existing?.celebrationSeen ?? false,
+      );
+      earnedNewBadge = earnedNewBadge || earned;
+    }
+    if (earnedNewBadge) unawaited(_playEffect(AppSoundEffect.claimReward));
+  }
+
+  Future<void> markBadgeCelebrationSeen(String badgeId) async {
+    final progress = badgeProgress[badgeId];
+    if (progress == null || progress.earnedAt == null) return;
+    badgeProgress[badgeId] = BadgeProgress(
+      badgeId: badgeId,
+      earnedAt: progress.earnedAt,
+      celebrationSeen: true,
+    );
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  static int _visualStage(double progress) {
+    if (progress >= 1) return 4;
+    if (progress >= .75) return 3;
+    if (progress >= .50) return 2;
+    if (progress >= .25) return 1;
+    return 0;
   }
 
   bool isSoundAvailable(String id) => _audioService.supports(id);
@@ -521,12 +1111,20 @@ class AppController extends ChangeNotifier {
       }
       _storedSoundVolumes[id] = soundVolumes[id]!;
       audioErrorMessage = null;
+      sleepTimerJustFinished = false;
+      if (soundVolumes.values.where((volume) => volume > 0).length >= 2) {
+        _evaluateBadges(mixer: true);
+      }
+      if (activeSoundCount == 0) _clearSleepTimerState();
       await _persistProgress();
       notifyListeners();
       return true;
-    } catch (_) {
+    } catch (error, stackTrace) {
       soundVolumes[id] = 0;
-      audioErrorMessage = 'This sound could not be played.';
+      debugPrint('Ambience $id failed: $error\n$stackTrace');
+      audioErrorMessage = kDebugMode
+          ? 'This sound could not be played: $error'
+          : 'This sound could not be played. Please try again.';
       notifyListeners();
       return false;
     }
@@ -546,17 +1144,27 @@ class AppController extends ChangeNotifier {
       soundVolumes[id] = value;
       _storedSoundVolumes[id] = value;
       audioErrorMessage = null;
+      sleepTimerJustFinished = false;
+      if (soundVolumes.values.where((volume) => volume > 0).length >= 2) {
+        _evaluateBadges(mixer: true);
+      }
+      if (activeSoundCount == 0) _clearSleepTimerState();
       await _persistProgress();
       notifyListeners();
-    } catch (_) {
+    } catch (error, stackTrace) {
       soundVolumes[id] = 0;
       _storedSoundVolumes[id] = 0;
-      audioErrorMessage = 'The volume could not be changed.';
+      debugPrint('Ambience volume $id failed: $error\n$stackTrace');
+      audioErrorMessage = kDebugMode
+          ? 'The volume could not be changed: $error'
+          : 'The volume could not be changed. Please try again.';
       notifyListeners();
     }
   }
 
   Future<void> stopAllSounds() async {
+    _clearSleepTimerState();
+    sleepTimerJustFinished = false;
     for (final id in soundVolumes.keys) {
       soundVolumes[id] = 0;
       _storedSoundVolumes[id] = 0;
@@ -568,14 +1176,82 @@ class AppController extends ChangeNotifier {
 
   Future<void> setSleepTimer(int minutes) async {
     sleepTimerMinutes = minutes;
+    if (sleepTimerActive) _armSleepTimer();
     await _persistProgress();
     notifyListeners();
   }
+
+  Future<bool> startSleepTimer() async {
+    if (activeSoundCount == 0) return false;
+    sleepTimerJustFinished = false;
+    sleepTimerActive = true;
+    sleepTimerRemainingSeconds = sleepTimerMinutes * 60;
+    _armSleepTimer();
+    await _persistProgress();
+    notifyListeners();
+    return true;
+  }
+
+  void _armSleepTimer() {
+    _sleepTimerTicker?.cancel();
+    sleepTimerActive = true;
+    sleepTimerRemainingSeconds = sleepTimerMinutes * 60;
+    _sleepTimerEndEpochMs = DateTime.now()
+        .add(Duration(seconds: sleepTimerRemainingSeconds))
+        .millisecondsSinceEpoch;
+    _sleepTimerTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      final end = _sleepTimerEndEpochMs;
+      if (end == null) return;
+      final delta = end - DateTime.now().millisecondsSinceEpoch;
+      if (delta <= 0) {
+        unawaited(_finishSleepTimer());
+      } else {
+        sleepTimerRemainingSeconds = (delta / 1000).ceil();
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> cancelSleepTimer() async {
+    _clearSleepTimerState();
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  void _clearSleepTimerState() {
+    _sleepTimerTicker?.cancel();
+    _sleepTimerTicker = null;
+    _sleepTimerEndEpochMs = null;
+    sleepTimerActive = false;
+    sleepTimerRemainingSeconds = 0;
+  }
+
+  Future<void> _finishSleepTimer() async {
+    _clearSleepTimerState();
+    for (final id in soundVolumes.keys) {
+      soundVolumes[id] = 0;
+      _storedSoundVolumes[id] = 0;
+    }
+    await _audioService.stopAll();
+    sleepTimerJustFinished = true;
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  Future<void> completeSleepTimerNow() => _finishSleepTimer();
 
   Future<void> setUsername(String value) async {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
     username = trimmed;
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  Future<void> setProfileAvatar(String avatarId) async {
+    if (!profileAvatarCatalog.any((avatar) => avatar.id == avatarId)) return;
+    profileAvatarId = avatarId;
     await _persistProgress();
     notifyListeners();
   }
@@ -624,40 +1300,22 @@ class AppController extends ChangeNotifier {
 
   void _syncLegacyProgressModels() {
     for (final item in decorationCatalog) {
-      final existing = inventoryEntries[item.id];
-      if (existing?.status == InventoryStatus.crafting ||
-          existing?.status == InventoryStatus.pendingClaim) {
-        continue;
-      }
+      final existing =
+          inventoryEntries[item.id] ??
+          InventoryEntry(itemId: item.id, status: InventoryStatus.locked);
       final placed = _persistedSelectedDecorationIds.contains(item.id);
-      final unlocked = placed || allTimeMinutes >= item.unlockMinutes;
       inventoryEntries[item.id] = InventoryEntry(
         itemId: item.id,
-        status: !unlocked
-            ? InventoryStatus.locked
-            : placed
+        status: placed
             ? InventoryStatus.placed
-            : InventoryStatus.owned,
-        earnedAt: existing?.earnedAt,
-        claimedAt: existing?.claimedAt,
+            : existing.status == InventoryStatus.placed
+            ? InventoryStatus.owned
+            : existing.status,
+        earnedAt: existing.earnedAt,
+        claimedAt: existing.claimedAt,
       );
     }
-
-    for (final entry in const {
-      'first_bloom': 25,
-      'night_owl': 120,
-      'deep_woods': 300,
-      'zen_keeper': 600,
-    }.entries) {
-      final existing = badgeProgress[entry.key];
-      badgeProgress[entry.key] = BadgeProgress(
-        badgeId: entry.key,
-        earnedAt:
-            existing?.earnedAt ??
-            (allTimeMinutes >= entry.value ? DateTime.now() : null),
-        celebrationSeen: existing?.celebrationSeen ?? false,
-      );
-    }
+    _evaluateBadges();
   }
 
   void _syncRoomPlacements() {
@@ -666,15 +1324,15 @@ class AppController extends ChangeNotifier {
     );
     for (final itemId in _persistedSelectedDecorationIds) {
       final item = decorationCatalog.firstWhere((item) => item.id == itemId);
-      final position = _persistedDecorationPositions[itemId];
       final existing = roomPlacements[itemId];
+      final position = item.placement.position;
+      decorationPositions[itemId] = position;
+      _persistedDecorationPositions[itemId] = position;
       roomPlacements[itemId] = RoomPlacement(
         itemId: itemId,
-        slotId: existing?.slotId ?? item.defaultSlotId,
-        layer: item.layer.index,
-        position: position == null
-            ? null
-            : NormalizedPosition(position.dx, position.dy),
+        slotId: item.placement.slotId,
+        layer: item.placement.layer.index,
+        position: NormalizedPosition(position.dx, position.dy),
         interactionEnabled: existing?.interactionEnabled ?? false,
       );
     }
@@ -700,6 +1358,7 @@ class AppController extends ChangeNotifier {
     soundVolumes: Map.unmodifiable(_storedSoundVolumes),
     timer: TimerSnapshot(
       status: timerStatus.name,
+      sessionKind: timerSessionKind.name,
       remainingSeconds: remainingSeconds,
       activeSessionMinutes: activeSessionMinutes,
       endEpochMs: _timerEndEpochMs,
@@ -736,8 +1395,17 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _ticker?.cancel();
+    _sleepTimerTicker?.cancel();
     unawaited(_audioService.dispose());
     unawaited(_soundEffectService.dispose());
     super.dispose();
   }
+}
+
+class _CraftPreviewState {
+  const _CraftPreviewState({this.item, this.minutes = 0, this.ratio = 1});
+
+  final DecorationItem? item;
+  final double minutes;
+  final double ratio;
 }

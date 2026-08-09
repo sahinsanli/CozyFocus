@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../core/assets/app_assets.dart';
+import '../../core/models/badge_definition.dart';
+import '../../core/models/decoration_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../../core/widgets/profile_avatar.dart';
 import '../settings/settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -44,30 +46,103 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _pickAvatar(BuildContext context) async {
+    final controller = AppScope.of(context);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: FractionallySizedBox(
+          heightFactor: .76,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+            child: Column(
+              children: [
+                Text(
+                  'Choose your profile picture',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pick a cozy symbol for your sanctuary.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 22),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 18,
+                          childAspectRatio: .82,
+                        ),
+                    itemCount: profileAvatarCatalog.length,
+                    itemBuilder: (context, index) {
+                      final avatar = profileAvatarCatalog[index];
+                      final active = avatar.id == controller.profileAvatarId;
+                      return InkWell(
+                        onTap: () => Navigator.pop(context, avatar.id),
+                        borderRadius: BorderRadius.circular(22),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: active
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: active
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).dividerColor,
+                              width: active ? 2 : 1,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: FittedBox(
+                                    child: ProfileAvatar(
+                                      avatarId: avatar.id,
+                                      size: 78,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  avatar.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (selected != null && context.mounted) {
+      await AppScope.of(context).setProfileAvatar(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final badges = <_BadgeData>[
-      _BadgeData('First Bloom', Icons.spa_outlined, AppColors.sage, 25),
-      _BadgeData(
-        'Night Owl',
-        Icons.nightlight_outlined,
-        const Color(0xFF766F57),
-        120,
-      ),
-      _BadgeData(
-        'Deep Woods',
-        Icons.forest_outlined,
-        AppColors.terracotta,
-        300,
-      ),
-      _BadgeData(
-        'Zen Keeper',
-        Icons.self_improvement_outlined,
-        AppColors.sageMid,
-        600,
-      ),
-    ];
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -93,46 +168,23 @@ class ProfileScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 700),
             child: Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 126,
-                      height: 126,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.sageSoft,
-                        boxShadow: DesignTokens.softShadow,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.asset(
-                        AppAssets.appIcon,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.high,
-                      ),
-                    ),
-                    Positioned(
-                      right: -4,
-                      bottom: -2,
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.sageMid,
-                          border: Border.all(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            width: 3,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.eco_outlined,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: DesignTokens.softShadow,
+                  ),
+                  child: ProfileAvatar(
+                    key: const Key('profile-avatar-edit'),
+                    avatarId: controller.profileAvatarId,
+                    size: 126,
+                    showEditBadge: true,
+                    onTap: () => _pickAvatar(context),
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  'Tap your picture to change it',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -217,12 +269,11 @@ class ProfileScreen extends StatelessWidget {
                     mainAxisSpacing: 14,
                     childAspectRatio: .82,
                   ),
-                  itemCount: badges.length,
+                  itemCount: badgeCatalog.length,
                   itemBuilder: (context, index) {
-                    final badge = badges[index];
+                    final badge = badgeCatalog[index];
                     final unlocked =
-                        controller.testMode ||
-                        controller.allTimeMinutes >= badge.threshold;
+                        controller.badgeProgress[badge.id]?.earnedAt != null;
                     return _Badge(data: badge, unlocked: unlocked);
                   },
                 ),
@@ -279,18 +330,10 @@ class _ProfileStat extends StatelessWidget {
   }
 }
 
-class _BadgeData {
-  const _BadgeData(this.name, this.icon, this.color, this.threshold);
-  final String name;
-  final IconData icon;
-  final Color color;
-  final int threshold;
-}
-
 class _Badge extends StatelessWidget {
   const _Badge({required this.data, required this.unlocked});
 
-  final _BadgeData data;
+  final BadgeDefinition data;
   final bool unlocked;
 
   @override
@@ -309,7 +352,7 @@ class _Badge extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              unlocked ? data.name : '${data.threshold}m',
+              data.name,
               textAlign: TextAlign.center,
               maxLines: 2,
               style: Theme.of(context).textTheme.labelLarge,

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/models/decoration_item.dart';
+import '../../core/models/app_progress.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
@@ -13,19 +14,14 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final upcoming = controller.testMode
-        ? decorationCatalog
-        : decorationCatalog
-              .where((item) => item.unlockMinutes > controller.allTimeMinutes)
-              .toList();
-    final nextTarget = upcoming.isEmpty
-        ? controller.allTimeMinutes
-        : upcoming.first.unlockMinutes;
-    final progress = controller.testMode
-        ? 1.0
-        : nextTarget == 0
-        ? 1.0
-        : (controller.allTimeMinutes / nextTarget).clamp(0.0, 1.0);
+    final upcoming = decorationCatalog.where((item) {
+      final status = controller.inventoryStatus(item.id);
+      return status == InventoryStatus.locked ||
+          status == InventoryStatus.crafting ||
+          status == InventoryStatus.pendingClaim;
+    }).toList();
+    final currentCraft = controller.currentCraftItem;
+    final progress = currentCraft == null ? 1.0 : controller.currentCraftRatio;
 
     return SingleChildScrollView(
       key: const PageStorageKey('stats-scroll'),
@@ -163,11 +159,9 @@ class StatsScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  controller.testMode
-                                      ? 'Test Mode Showcase'
-                                      : upcoming.isEmpty
+                                  upcoming.isEmpty
                                       ? 'Sanctuary Keeper'
-                                      : upcoming.first.name,
+                                      : currentCraft?.name ?? 'Ready to claim',
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(color: AppColors.ink),
                                 ),
@@ -191,11 +185,11 @@ class StatsScreen extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              controller.testMode
-                                  ? 'All rewards are available for preview.'
-                                  : upcoming.isEmpty
+                              upcoming.isEmpty
                                   ? 'Every room reward is unlocked.'
-                                  : '${upcoming.first.unlockMinutes - controller.allTimeMinutes} focused minutes to unlock',
+                                  : currentCraft == null
+                                  ? 'Claim the finished item to add it to your inventory.'
+                                  : '${currentCraft.unlockMinutes - controller.craftProgress.accumulatedMinutes} focused minutes to finish',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: AppColors.mutedInk),
                             ),
@@ -221,7 +215,9 @@ class StatsScreen extends StatelessWidget {
                         title: Text('All decorations unlocked'),
                       )
                     else
-                      ...(controller.testMode ? upcoming : upcoming.take(3))
+                      ...(controller.testMode
+                              ? decorationCatalog
+                              : upcoming.take(3))
                           .map(
                             (item) => ListTile(
                               dense: true,
@@ -232,16 +228,23 @@ class StatsScreen extends StatelessWidget {
                               ),
                               title: Text(item.name),
                               subtitle: Text(
-                                controller.testMode
-                                    ? 'Unlocked for preview'
-                                    : '${item.unlockMinutes} focus minutes',
+                                controller.inventoryStatus(item.id) ==
+                                        InventoryStatus.pendingClaim
+                                    ? 'Ready to claim'
+                                    : '${item.unlockMinutes} focused minutes required',
                               ),
                               trailing: Icon(
-                                controller.testMode
-                                    ? Icons.check_circle_outline_rounded
+                                controller.inventoryStatus(item.id) ==
+                                        InventoryStatus.pendingClaim
+                                    ? Icons.redeem_outlined
+                                    : controller.inventoryStatus(item.id) ==
+                                          InventoryStatus.crafting
+                                    ? Icons.construction_outlined
                                     : Icons.lock_outline,
                                 size: 20,
-                                color: controller.testMode
+                                color:
+                                    controller.inventoryStatus(item.id) ==
+                                        InventoryStatus.pendingClaim
                                     ? AppColors.sage
                                     : null,
                               ),

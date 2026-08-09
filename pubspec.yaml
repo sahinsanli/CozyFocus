@@ -36,6 +36,15 @@ dependencies:
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.4
   just_audio: ^0.10.6
+  audio_session: ^0.2.4
+
+# path_provider_foundation 2.6.0 moved iOS path lookup to an Objective-C FFI
+# native asset. Its device slice can be reused by Xcode when switching to the
+# simulator, which prevents every just_audio player from loading. Keep the
+# stable plugin implementation until that cross-platform native-asset issue is
+# resolved upstream.
+dependency_overrides:
+  path_provider_foundation: 2.5.1
 
 dev_dependencies:
   flutter_test:

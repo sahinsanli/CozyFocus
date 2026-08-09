@@ -4,7 +4,36 @@ import '../assets/app_assets.dart';
 
 enum RoomSlotType { floor, wall, ceiling, tabletop }
 
-enum RoomItemLayer { wall, floorBack, floorMiddle, floorFront, tabletop, light }
+enum RoomItemLayer {
+  wall,
+  floorFoundation,
+  floorBack,
+  floorMiddle,
+  tabletop,
+  floorFront,
+  light,
+}
+
+/// The single canonical home of a decoration in the finished room.
+///
+/// Positions use Flutter's normalized Alignment coordinate space (-1...1).
+/// They are catalog-owned so saved user data can never create a conflicting
+/// second layout.
+class RoomPlacementSpec {
+  const RoomPlacementSpec({
+    required this.slotId,
+    required this.position,
+    required this.widthFactor,
+    required this.layer,
+    this.supportItemId,
+  });
+
+  final String slotId;
+  final Offset position;
+  final double widthFactor;
+  final RoomItemLayer layer;
+  final String? supportItemId;
+}
 
 class DecorationItem {
   const DecorationItem({
@@ -28,6 +57,7 @@ class DecorationItem {
     required this.craftAtlasRow,
     this.atlasCrop = const Rect.fromLTWH(0, 0, 1, 1),
     this.isInteractive = false,
+    this.supportItemId,
   });
 
   final String id;
@@ -47,11 +77,20 @@ class DecorationItem {
   final Offset defaultPosition;
   final double widthFactor;
   final bool isInteractive;
+  final String? supportItemId;
   final String craftAssetPath;
   final int craftAtlasRows;
   final int craftAtlasRow;
 
   double get contentAspectRatio => atlasCrop.width / atlasCrop.height;
+
+  RoomPlacementSpec get placement => RoomPlacementSpec(
+    slotId: defaultSlotId,
+    position: defaultPosition,
+    widthFactor: widthFactor,
+    layer: layer,
+    supportItemId: supportItemId,
+  );
 }
 
 class CollectibleDecoration {
@@ -60,12 +99,36 @@ class CollectibleDecoration {
     required this.name,
     required this.atlasColumn,
     required this.atlasRow,
+    required this.atlasCrop,
+    required this.slotType,
+    required this.layer,
+    required this.defaultSlotId,
+    required this.defaultPosition,
+    required this.widthFactor,
+    this.supportItemId,
   });
 
   final String id;
   final String name;
   final int atlasColumn;
   final int atlasRow;
+  final Rect atlasCrop;
+  final RoomSlotType slotType;
+  final RoomItemLayer layer;
+  final String defaultSlotId;
+  final Offset defaultPosition;
+  final double widthFactor;
+  final String? supportItemId;
+
+  double get contentAspectRatio => atlasCrop.width / atlasCrop.height;
+
+  RoomPlacementSpec get placement => RoomPlacementSpec(
+    slotId: defaultSlotId,
+    position: defaultPosition,
+    widthFactor: widthFactor,
+    layer: layer,
+    supportItemId: supportItemId,
+  );
 }
 
 class ProfileAvatarItem {
@@ -94,11 +157,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 0,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.18, .15, .82, .83),
     slotType: RoomSlotType.floor,
-    layer: RoomItemLayer.floorBack,
-    defaultSlotId: 'floor_back_left',
-    defaultPosition: Offset(-.34, .04),
-    widthFactor: .48,
+    layer: RoomItemLayer.floorMiddle,
+    defaultSlotId: 'desk_home',
+    defaultPosition: Offset(-.14, .15),
+    widthFactor: .64,
     craftAssetPath: AppAssets.craftingAtlasAV2,
     craftAtlasRows: 4,
     craftAtlasRow: 0,
@@ -114,11 +178,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 1,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(0, .12, .89, .87),
     slotType: RoomSlotType.floor,
-    layer: RoomItemLayer.floorMiddle,
-    defaultSlotId: 'floor_middle_left',
-    defaultPosition: Offset(-.18, .29),
-    widthFactor: .36,
+    layer: RoomItemLayer.floorFront,
+    defaultSlotId: 'chair_home',
+    defaultPosition: Offset(-.03, .36),
+    widthFactor: .37,
     craftAssetPath: AppAssets.craftingAtlasAV2,
     craftAtlasRows: 4,
     craftAtlasRow: 1,
@@ -134,12 +199,14 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 2,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.25, .12, .55, .86),
     slotType: RoomSlotType.tabletop,
-    layer: RoomItemLayer.light,
-    defaultSlotId: 'table_left',
-    defaultPosition: Offset(-.42, -.04),
-    widthFactor: .20,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'lamp_on_desk',
+    defaultPosition: Offset(-.42, -.23),
+    widthFactor: .16,
     isInteractive: true,
+    supportItemId: 'desk',
     craftAssetPath: AppAssets.craftingAtlasAV2,
     craftAtlasRows: 4,
     craftAtlasRow: 2,
@@ -155,11 +222,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 3,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(0, .28, .82, .64),
     slotType: RoomSlotType.floor,
-    layer: RoomItemLayer.floorFront,
-    defaultSlotId: 'floor_front_center',
-    defaultPosition: Offset(.02, .62),
-    widthFactor: .68,
+    layer: RoomItemLayer.floorFoundation,
+    defaultSlotId: 'rug_home',
+    defaultPosition: Offset(-.02, .45),
+    widthFactor: .92,
     craftAssetPath: AppAssets.craftingAtlasAV2,
     craftAtlasRows: 4,
     craftAtlasRow: 3,
@@ -175,11 +243,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 4,
     atlasColumn: 0,
     atlasRow: 2,
+    atlasCrop: Rect.fromLTWH(.22, 0, .63, .93),
     slotType: RoomSlotType.floor,
     layer: RoomItemLayer.floorMiddle,
-    defaultSlotId: 'floor_middle_right',
-    defaultPosition: Offset(.47, .24),
-    widthFactor: .28,
+    defaultSlotId: 'plant_home',
+    defaultPosition: Offset(.70, .34),
+    widthFactor: .23,
     craftAssetPath: AppAssets.craftingAtlasBV2,
     craftAtlasRows: 4,
     craftAtlasRow: 0,
@@ -195,11 +264,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 1,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.15, .18, .77, .72),
     slotType: RoomSlotType.floor,
     layer: RoomItemLayer.floorBack,
-    defaultSlotId: 'floor_back_right',
-    defaultPosition: Offset(.44, -.02),
-    widthFactor: .40,
+    defaultSlotId: 'bookshelf_home',
+    defaultPosition: Offset(.74, -.18),
+    widthFactor: .46,
     craftAssetPath: AppAssets.craftingAtlasBV2,
     craftAtlasRows: 4,
     craftAtlasRow: 1,
@@ -215,12 +285,14 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 2,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.19, .17, .58, .79),
     slotType: RoomSlotType.tabletop,
-    layer: RoomItemLayer.light,
-    defaultSlotId: 'table_right',
-    defaultPosition: Offset(-.07, .00),
-    widthFactor: .14,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'candle_on_desk',
+    defaultPosition: Offset(-.08, -.16),
+    widthFactor: .10,
     isInteractive: true,
+    supportItemId: 'desk',
     craftAssetPath: AppAssets.craftingAtlasBV2,
     craftAtlasRows: 4,
     craftAtlasRow: 2,
@@ -236,11 +308,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 3,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.13, .15, .57, .75),
     slotType: RoomSlotType.wall,
     layer: RoomItemLayer.wall,
-    defaultSlotId: 'wall_right',
-    defaultPosition: Offset(.43, -.56),
-    widthFactor: .24,
+    defaultSlotId: 'wall_art_home',
+    defaultPosition: Offset(.52, -.42),
+    widthFactor: .22,
     craftAssetPath: AppAssets.craftingAtlasBV2,
     craftAtlasRows: 4,
     craftAtlasRow: 3,
@@ -256,11 +329,12 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 0,
     atlasRow: 2,
+    atlasCrop: Rect.fromLTWH(.28, 0, .55, .88),
     slotType: RoomSlotType.ceiling,
     layer: RoomItemLayer.wall,
-    defaultSlotId: 'ceiling_right',
-    defaultPosition: Offset(.62, -.55),
-    widthFactor: .28,
+    defaultSlotId: 'hanging_plant_home',
+    defaultPosition: Offset(.04, -.48),
+    widthFactor: .26,
     craftAssetPath: AppAssets.craftingAtlasCV2,
     craftAtlasRows: 2,
     craftAtlasRow: 0,
@@ -276,11 +350,13 @@ const decorationCatalog = <DecorationItem>[
     atlasRows: 3,
     atlasColumn: 1,
     atlasRow: 2,
+    atlasCrop: Rect.fromLTWH(.08, .07, .88, .71),
     slotType: RoomSlotType.floor,
     layer: RoomItemLayer.floorFront,
-    defaultSlotId: 'floor_front_right',
-    defaultPosition: Offset(.43, .58),
-    widthFactor: .34,
+    defaultSlotId: 'cat_on_rug',
+    defaultPosition: Offset(.30, .51),
+    widthFactor: .26,
+    supportItemId: 'rug',
     craftAssetPath: AppAssets.craftingAtlasCV2,
     craftAtlasRows: 2,
     craftAtlasRow: 1,
@@ -293,48 +369,102 @@ const dailyDecorationCatalog = <CollectibleDecoration>[
     name: 'Moon Tea',
     atlasColumn: 0,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.17, .22, .83, .70),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'tea_on_desk',
+    defaultPosition: Offset(.17, -.12),
+    widthFactor: .11,
+    supportItemId: 'desk',
   ),
   CollectibleDecoration(
     id: 'book_stack',
     name: 'Book Stack',
     atlasColumn: 1,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.14, .21, .82, .76),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'books_on_shelf',
+    defaultPosition: Offset(.58, -.01),
+    widthFactor: .14,
+    supportItemId: 'bookshelf',
   ),
   CollectibleDecoration(
     id: 'tiny_vase',
     name: 'Tiny Vase',
     atlasColumn: 2,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.27, .09, .45, .88),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'vase_on_shelf',
+    defaultPosition: Offset(.13, -.34),
+    widthFactor: .09,
+    supportItemId: 'bookshelf',
   ),
   CollectibleDecoration(
     id: 'starflower',
     name: 'Starflower',
     atlasColumn: 3,
     atlasRow: 0,
+    atlasCrop: Rect.fromLTWH(.06, .08, .72, .88),
+    slotType: RoomSlotType.floor,
+    layer: RoomItemLayer.floorBack,
+    defaultSlotId: 'starflower_by_window',
+    defaultPosition: Offset(-.58, -.13),
+    widthFactor: .16,
   ),
   CollectibleDecoration(
     id: 'night_fern',
     name: 'Night Fern',
     atlasColumn: 0,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.16, .10, .83, .90),
+    slotType: RoomSlotType.floor,
+    layer: RoomItemLayer.floorBack,
+    defaultSlotId: 'fern_by_window',
+    defaultPosition: Offset(-.76, -.24),
+    widthFactor: .34,
   ),
   CollectibleDecoration(
     id: 'owl_figure',
     name: 'Owl Figure',
     atlasColumn: 1,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.20, .15, .62, .80),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'owl_on_shelf',
+    defaultPosition: Offset(.68, -.32),
+    widthFactor: .11,
+    supportItemId: 'bookshelf',
   ),
   CollectibleDecoration(
     id: 'leaf_lantern',
     name: 'Leaf Lantern',
     atlasColumn: 2,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.18, .05, .58, .90),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.light,
+    defaultSlotId: 'lantern_on_shelf',
+    defaultPosition: Offset(.40, -.33),
+    widthFactor: .10,
+    supportItemId: 'bookshelf',
   ),
   CollectibleDecoration(
     id: 'desk_clock',
     name: 'Desk Clock',
     atlasColumn: 3,
     atlasRow: 1,
+    atlasCrop: Rect.fromLTWH(.05, .17, .68, .72),
+    slotType: RoomSlotType.tabletop,
+    layer: RoomItemLayer.tabletop,
+    defaultSlotId: 'clock_on_desk',
+    defaultPosition: Offset(.34, -.14),
+    widthFactor: .10,
+    supportItemId: 'desk',
   ),
 ];
 

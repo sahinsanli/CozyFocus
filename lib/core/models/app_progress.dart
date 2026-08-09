@@ -22,22 +22,30 @@ class CraftProgress {
     this.activeItemId,
     this.accumulatedMinutes = 0,
     this.carryoverMinutes = 0,
+    this.requiredMinutes = 0,
+    this.visualStage = 0,
   });
 
   final String? activeItemId;
   final int accumulatedMinutes;
   final int carryoverMinutes;
+  final int requiredMinutes;
+  final int visualStage;
 
   Map<String, dynamic> toJson() => {
     'activeItemId': activeItemId,
     'accumulatedMinutes': accumulatedMinutes,
     'carryoverMinutes': carryoverMinutes,
+    'requiredMinutes': requiredMinutes,
+    'visualStage': visualStage,
   };
 
   factory CraftProgress.fromJson(Map<String, dynamic> json) => CraftProgress(
     activeItemId: json['activeItemId'] as String?,
     accumulatedMinutes: (json['accumulatedMinutes'] as num?)?.toInt() ?? 0,
     carryoverMinutes: (json['carryoverMinutes'] as num?)?.toInt() ?? 0,
+    requiredMinutes: (json['requiredMinutes'] as num?)?.toInt() ?? 0,
+    visualStage: (json['visualStage'] as num?)?.toInt() ?? 0,
   );
 }
 
@@ -175,16 +183,38 @@ class DailyRewardState {
     this.completedDateKey,
     this.pendingRewardId,
     this.claimedItemIds = const [],
+    this.placedItemIds = const [],
+    this.placementInitialized = false,
   });
 
   final String? completedDateKey;
   final String? pendingRewardId;
   final List<String> claimedItemIds;
+  final List<String> placedItemIds;
+  final bool placementInitialized;
+
+  DailyRewardState copyWith({
+    String? completedDateKey,
+    String? pendingRewardId,
+    List<String>? claimedItemIds,
+    List<String>? placedItemIds,
+    bool? placementInitialized,
+    bool clearPendingReward = false,
+  }) => DailyRewardState(
+    completedDateKey: completedDateKey ?? this.completedDateKey,
+    pendingRewardId: clearPendingReward
+        ? null
+        : pendingRewardId ?? this.pendingRewardId,
+    claimedItemIds: claimedItemIds ?? this.claimedItemIds,
+    placedItemIds: placedItemIds ?? this.placedItemIds,
+    placementInitialized: placementInitialized ?? this.placementInitialized,
+  );
 
   Map<String, dynamic> toJson() => {
     'completedDateKey': completedDateKey,
     'pendingRewardId': pendingRewardId,
     'claimedItemIds': claimedItemIds,
+    'placedItemIds': placedItemIds,
   };
 
   factory DailyRewardState.fromJson(Map<String, dynamic> json) =>
@@ -192,24 +222,29 @@ class DailyRewardState {
         completedDateKey: json['completedDateKey'] as String?,
         pendingRewardId: json['pendingRewardId'] as String?,
         claimedItemIds: _stringList(json['claimedItemIds']),
+        placedItemIds: _stringList(json['placedItemIds']),
+        placementInitialized: json.containsKey('placedItemIds'),
       );
 }
 
 class TimerSnapshot {
   const TimerSnapshot({
     this.status = 'idle',
+    this.sessionKind = 'focus',
     this.remainingSeconds = 25 * 60,
     this.activeSessionMinutes = 25,
     this.endEpochMs,
   });
 
   final String status;
+  final String sessionKind;
   final int remainingSeconds;
   final int activeSessionMinutes;
   final int? endEpochMs;
 
   Map<String, dynamic> toJson() => {
     'status': status,
+    'sessionKind': sessionKind,
     'remainingSeconds': remainingSeconds,
     'activeSessionMinutes': activeSessionMinutes,
     'endEpochMs': endEpochMs,
@@ -217,6 +252,7 @@ class TimerSnapshot {
 
   factory TimerSnapshot.fromJson(Map<String, dynamic> json) => TimerSnapshot(
     status: json['status'] as String? ?? 'idle',
+    sessionKind: json['sessionKind'] as String? ?? 'focus',
     remainingSeconds: (json['remainingSeconds'] as num?)?.toInt() ?? 25 * 60,
     activeSessionMinutes: (json['activeSessionMinutes'] as num?)?.toInt() ?? 25,
     endEpochMs: (json['endEpochMs'] as num?)?.toInt(),

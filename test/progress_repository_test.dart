@@ -74,6 +74,8 @@ void main() {
         completedDateKey: '2026-08-06',
         pendingRewardId: 'daily-1',
         claimedItemIds: ['candle'],
+        placedItemIds: ['candle'],
+        placementInitialized: true,
       ),
     );
 
@@ -125,8 +127,10 @@ void main() {
     expect(migrated.dailyMinutes['2026-08-06'], 150);
     expect(migrated.soundVolumes['rain'], .55);
     expect(migrated.timer.status, 'paused');
-    expect(migrated.decorationPositions['bookshelf']?.x, .43);
-    expect(migrated.roomPlacements['bookshelf']?.slotId, 'floor_front_right');
+    expect(migrated.decorationPositions['bookshelf']?.x, .74);
+    expect(migrated.decorationPositions['bookshelf']?.y, -.18);
+    expect(migrated.roomPlacements['bookshelf']?.slotId, 'bookshelf_home');
+    expect(migrated.roomPlacements['potted_plant']?.slotId, 'plant_home');
     expect(migrated.inventory['potted_plant']?.status, InventoryStatus.placed);
     expect(migrated.inventory['bookshelf']?.status, InventoryStatus.placed);
     expect(migrated.inventory['chair']?.status, InventoryStatus.owned);

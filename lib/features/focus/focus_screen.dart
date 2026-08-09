@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/assets/app_assets.dart';
 import '../../core/assets/atlas_sprite.dart';
+import '../../core/models/app_progress.dart';
+import '../../core/models/decoration_item.dart';
 import '../../core/services/app_controller.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
@@ -39,8 +41,10 @@ class FocusScreen extends StatelessWidget {
               Text(
                 controller.showCelebration
                     ? controller.testPreviewActive
-                          ? 'Preview complete!'
+                          ? 'Test focus complete!'
                           : 'Beautiful work!'
+                    : controller.isBreakSession
+                    ? 'Time to breathe'
                     : 'Ready to focus?',
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
@@ -49,8 +53,10 @@ class FocusScreen extends StatelessWidget {
               Text(
                 controller.showCelebration
                     ? controller.testPreviewActive
-                          ? 'This is exactly what a completed focus session looks like.'
+                          ? 'Fast-forwarded time used the real progression rules.'
                           : 'Your sanctuary grew a little calmer.'
+                    : controller.isBreakSession
+                    ? 'Your focus is safe. Take a gentle pause.'
                     : 'Settle in and give one thing your full attention.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -58,23 +64,7 @@ class FocusScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              SizedBox(
-                width: 250,
-                height: 250,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: DesignTokens.softShadow,
-                  ),
-                  child: Image.asset(
-                    AppAssets.focusRoomHero,
-                    fit: BoxFit.cover,
-                    alignment: const Alignment(0, .38),
-                    filterQuality: FilterQuality.high,
-                  ),
-                ),
-              ),
+              _CraftPreview(controller: controller),
               const SizedBox(height: 32),
               if (controller.showCelebration)
                 _CelebrationCard(controller: controller)
@@ -84,6 +74,7 @@ class FocusScreen extends StatelessWidget {
                   time: time,
                   status: controller.timerStatus,
                   testPreview: controller.testPreviewActive,
+                  isBreak: controller.isBreakSession,
                 ),
                 if (controller.testMode) ...[
                   const SizedBox(height: 18),
@@ -122,9 +113,47 @@ class FocusScreen extends StatelessWidget {
                       ? null
                       : controller.resetTimer,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Reset timer'),
+                  label: Text(
+                    controller.isBreakSession ? 'End break' : 'Reset timer',
+                  ),
                 ),
+                if (!controller.testMode &&
+                    !controller.isBreakSession &&
+                    controller.timerStatus == FocusTimerStatus.idle)
+                  TextButton.icon(
+                    onPressed: controller.startBreak,
+                    icon: const Icon(Icons.coffee_outlined),
+                    label: Text(
+                      'Take a ${controller.shortBreakMinutes} min break',
+                    ),
+                  ),
                 const SizedBox(height: 22),
+                if (controller.focusReminders &&
+                    controller.todayMinutes == 0) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.sageSoft.withValues(alpha: .26),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.notifications_active_outlined),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'A gentle reminder: one small focus session is enough to begin.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 CozyCard(
                   child: Row(
                     children: [
@@ -195,18 +224,108 @@ class FocusScreen extends StatelessWidget {
   };
 }
 
+class _CraftPreview extends StatelessWidget {
+  const _CraftPreview({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = controller.previewCraftItem;
+    if (item == null) {
+      return CozyCard(
+        child: Column(
+          children: [
+            Icon(
+              Icons.home_rounded,
+              size: 72,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Your sanctuary collection is complete',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    final stage = controller.previewCraftVisualStage;
+    final shownMinutes = controller.previewCraftMinutes;
+    return SizedBox(
+      width: 300,
+      child: CozyCard(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+        child: Column(
+          children: [
+            SizedBox(
+              width: 240,
+              height: 205,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 520),
+                switchInCurve: Curves.easeOutBack,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween(begin: .86, end: 1.0).animate(animation),
+                    alignment: Alignment.bottomCenter,
+                    child: child,
+                  ),
+                ),
+                child: SizedBox.expand(
+                  key: ValueKey('${item.id}-$stage'),
+                  child: AtlasSprite(
+                    assetPath: item.craftAssetPath,
+                    columns: 5,
+                    rows: item.craftAtlasRows,
+                    column: stage,
+                    row: item.craftAtlasRow,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Crafting ${item.name}',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: controller.previewCraftRatio,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              '$shownMinutes / ${item.unlockMinutes} focused minutes • stage ${stage + 1}/5',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TimerRing extends StatelessWidget {
   const _TimerRing({
     required this.progress,
     required this.time,
     required this.status,
     required this.testPreview,
+    required this.isBreak,
   });
 
   final double progress;
   final String time;
   final FocusTimerStatus status;
   final bool testPreview;
+  final bool isBreak;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +371,10 @@ class _TimerRing extends StatelessWidget {
                 Text(
                   testPreview
                       ? 'TEST PREVIEW'
+                      : isBreak
+                      ? status == FocusTimerStatus.paused
+                            ? 'BREAK PAUSED'
+                            : 'SHORT BREAK'
                       : status == FocusTimerStatus.running
                       ? 'FOCUSING'
                       : status == FocusTimerStatus.paused
@@ -303,7 +426,7 @@ class _TestModePanel extends StatelessWidget {
           Text(
             controller.testPreviewActive
                 ? '${controller.testElapsedMinutes} of ${controller.activeSessionMinutes} minutes previewed'
-                : 'Preview focus checkpoints, rewards, badges, and every room item.',
+                : 'Fast-forward focus time while keeping the real production, claim, badge, and inventory rules.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -330,7 +453,7 @@ class _TestModePanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Preview sessions do not change your real statistics.',
+            'Completed test sessions are saved exactly like normal focus sessions.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.terracotta,
               fontWeight: FontWeight.w700,
@@ -349,6 +472,8 @@ class _CelebrationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reward = controller.nextPendingReward;
+    final hasReward = reward != null;
     return CozyCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).cardColor
@@ -360,7 +485,7 @@ class _CelebrationCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(
               children: [
-                const _PlantGrowthCelebration(),
+                _RewardPreview(controller: controller, reward: reward),
                 const SizedBox(height: 12),
                 Text(
                   controller.testPreviewActive
@@ -377,21 +502,120 @@ class _CelebrationCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  controller.testPreviewActive
-                      ? 'Preview only — your real focus statistics were not changed.'
-                      : 'Reward: a little more life for your cozy room 🌿',
+                  reward == null
+                      ? 'Your focus minutes were saved. Keep going to finish the current item.'
+                      : reward.kind == PendingRewardKind.craftedItem
+                      ? '${decorationCatalog.firstWhere((item) => item.id == reward.itemId).name} is ready to claim.'
+                      : '${dailyDecorationCatalog.firstWhere((item) => item.id == reward.itemId).name} came from today’s gentle goal.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 22),
-                FilledButton(
-                  onPressed: controller.resetTimer,
-                  style: FilledButton.styleFrom(shape: const StadiumBorder()),
-                  child: const Text('Begin another session'),
-                ),
+                if (reward != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => controller.claimNextReward(place: true),
+                      style: FilledButton.styleFrom(
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: Icon(Icons.add_home_work_outlined),
+                      label: Text('Claim & Place'),
+                    ),
+                  ),
+                  if (hasReward) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => controller.claimNextReward(place: false),
+                      child: const Text('Claim for later'),
+                    ),
+                  ],
+                  if (controller.pendingRewards.length > 1)
+                    Text(
+                      '${controller.pendingRewards.length - 1} more reward${controller.pendingRewards.length == 2 ? '' : 's'} waiting',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                ] else
+                  FilledButton(
+                    onPressed: controller.continueAfterCelebration,
+                    style: FilledButton.styleFrom(shape: const StadiumBorder()),
+                    child: Text(
+                      controller.isBreakSession
+                          ? 'Continue break'
+                          : 'Begin another session',
+                    ),
+                  ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RewardPreview extends StatelessWidget {
+  const _RewardPreview({required this.controller, required this.reward});
+
+  final AppController controller;
+  final PendingReward? reward;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget sprite;
+    final pending = reward;
+    if (pending?.kind == PendingRewardKind.craftedItem) {
+      final item = decorationCatalog.firstWhere(
+        (item) => item.id == pending!.itemId,
+      );
+      sprite = AtlasSprite(
+        assetPath: item.assetPath,
+        columns: item.atlasColumns,
+        rows: item.atlasRows,
+        column: item.atlasColumn,
+        row: item.atlasRow,
+        contentRect: item.atlasCrop,
+        fit: BoxFit.contain,
+      );
+    } else if (pending?.kind == PendingRewardKind.dailyDecoration) {
+      final item = dailyDecorationCatalog.firstWhere(
+        (item) => item.id == pending!.itemId,
+      );
+      sprite = AtlasSprite(
+        assetPath: AppAssets.rewardAvatarAtlasV2,
+        columns: 4,
+        rows: 4,
+        column: item.atlasColumn,
+        row: item.atlasRow,
+        fit: BoxFit.contain,
+      );
+    } else {
+      sprite = const Icon(Icons.auto_awesome_rounded, size: 82);
+    }
+    return SizedBox(
+      width: 170,
+      height: 170,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 720),
+        curve: Curves.elasticOut,
+        tween: Tween(begin: .35, end: 1),
+        builder: (context, scale, child) => Transform.scale(
+          scale: scale,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.sageSoft.withValues(alpha: .32),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.sageMid.withValues(alpha: .30),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Padding(padding: const EdgeInsets.all(16), child: child),
+          ),
+        ),
+        child: sprite,
       ),
     );
   }

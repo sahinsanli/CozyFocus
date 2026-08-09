@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/assets/app_assets.dart';
 import '../../core/assets/atlas_sprite.dart';
+import '../../core/models/app_progress.dart';
 import '../../core/models/decoration_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
@@ -110,16 +110,21 @@ class RoomScreen extends StatelessWidget {
                       );
                       return controller.isDecorationUnlocked(item);
                     }).toSet(),
-                    positions: controller.decorationPositions,
+                    selectedCollectibleIds: controller
+                        .dailyRewardState
+                        .placedItemIds
+                        .where((id) {
+                          final item = dailyDecorationCatalog.firstWhere(
+                            (item) => item.id == id,
+                          );
+                          final supportId = item.placement.supportItemId;
+                          return supportId == null ||
+                              controller.selectedDecorationIds.contains(
+                                supportId,
+                              );
+                        })
+                        .toSet(),
                     activeItems: activeItems,
-                    onMoved: controller.moveDecoration,
-                    onPlaced:
-                        ({required id, required position, required slotId}) =>
-                            controller.placeDecoration(
-                              id: id,
-                              position: position,
-                              slotId: slotId,
-                            ),
                     onInteraction: controller.toggleRoomItemInteraction,
                   ),
                 ),
@@ -155,7 +160,7 @@ class RoomScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Drag placed items between the glowing compatible slots.',
+                'Tap an available item to place it in its designed home or store it.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -172,15 +177,159 @@ class RoomScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = decorationCatalog[index];
                   final unlocked = controller.isDecorationUnlocked(item);
+                  final status = controller.inventoryStatus(item.id);
                   final selected =
                       unlocked &&
                       controller.selectedDecorationIds.contains(item.id);
                   return _InventoryCard(
                     index: index,
                     item: item,
+                    status: status,
                     unlocked: unlocked,
                     selected: selected,
                     onTap: () => controller.toggleDecoration(item.id),
+                  );
+                },
+              ),
+              const SizedBox(height: DesignTokens.sectionGap),
+              Row(
+                children: [
+                  Icon(
+                    Icons.redeem_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Gentle Goal Collection',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  Text(
+                    '${controller.dailyRewardState.claimedItemIds.length}/${dailyDecorationCatalog.length}',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Complete the daily goal to open a non-repeating decor box. Tap an owned piece to place or store it.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 14),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 9,
+                  mainAxisSpacing: 9,
+                  childAspectRatio: .72,
+                ),
+                itemCount: dailyDecorationCatalog.length,
+                itemBuilder: (context, index) {
+                  final item = dailyDecorationCatalog[index];
+                  final owned = controller.dailyRewardState.claimedItemIds
+                      .contains(item.id);
+                  final placed = controller.isCollectiblePlaced(item.id);
+                  final canPlace = controller.canPlaceCollectible(item);
+                  return CozyCard(
+                    padding: const EdgeInsets.all(7),
+                    border: Border.all(
+                      width: placed ? 2 : 1,
+                      color: placed
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).dividerColor,
+                    ),
+                    child: InkWell(
+                      onTap: owned && (placed || canPlace)
+                          ? () =>
+                                controller.toggleCollectibleDecoration(item.id)
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Opacity(
+                                  opacity: owned ? 1 : .30,
+                                  child: ColorFiltered(
+                                    colorFilter: owned
+                                        ? const ColorFilter.mode(
+                                            Colors.transparent,
+                                            BlendMode.dst,
+                                          )
+                                        : const ColorFilter.mode(
+                                            Colors.grey,
+                                            BlendMode.saturation,
+                                          ),
+                                    child: SizedBox.expand(
+                                      child: AtlasSprite(
+                                        key: Key('gentle-goal-${item.id}'),
+                                        assetPath:
+                                            AppAssets.rewardAvatarAtlasV2,
+                                        columns: 4,
+                                        rows: 4,
+                                        column: item.atlasColumn,
+                                        row: item.atlasRow,
+                                        contentRect: item.atlasCrop,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (!owned)
+                                  const Align(
+                                    alignment: Alignment.topRight,
+                                    child: Icon(
+                                      Icons.lock_outline_rounded,
+                                      size: 14,
+                                    ),
+                                  )
+                                else if (placed)
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 15,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            owned ? item.name : 'Mystery',
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                          if (owned)
+                            Text(
+                              placed
+                                  ? 'In room'
+                                  : canPlace
+                                  ? 'Stored'
+                                  : 'Needs ${decorationCatalog.firstWhere((main) => main.id == item.supportItemId).name}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontSize: 8,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
@@ -192,51 +341,17 @@ class RoomScreen extends StatelessWidget {
   }
 }
 
-typedef _PlacementCallback =
-    Future<void> Function({
-      required String id,
-      required Offset position,
-      required String slotId,
-    });
-
-class _RoomSlot {
-  const _RoomSlot(this.id, this.type, this.position);
-
-  final String id;
-  final RoomSlotType type;
-  final Offset position;
-}
-
-const _roomSlots = <_RoomSlot>[
-  _RoomSlot('floor_back_left', RoomSlotType.floor, Offset(-.34, .04)),
-  _RoomSlot('floor_back_right', RoomSlotType.floor, Offset(.44, -.02)),
-  _RoomSlot('floor_middle_left', RoomSlotType.floor, Offset(-.18, .29)),
-  _RoomSlot('floor_middle_right', RoomSlotType.floor, Offset(.47, .24)),
-  _RoomSlot('floor_front_center', RoomSlotType.floor, Offset(.02, .62)),
-  _RoomSlot('floor_front_right', RoomSlotType.floor, Offset(.43, .58)),
-  _RoomSlot('wall_left', RoomSlotType.wall, Offset(-.38, -.52)),
-  _RoomSlot('wall_right', RoomSlotType.wall, Offset(.43, -.56)),
-  _RoomSlot('ceiling_left', RoomSlotType.ceiling, Offset(-.52, -.56)),
-  _RoomSlot('ceiling_right', RoomSlotType.ceiling, Offset(.62, -.55)),
-  _RoomSlot('table_left', RoomSlotType.tabletop, Offset(-.42, -.04)),
-  _RoomSlot('table_right', RoomSlotType.tabletop, Offset(-.07, .00)),
-];
-
 class _RoomCanvas extends StatefulWidget {
   const _RoomCanvas({
     required this.selectedIds,
-    required this.positions,
+    required this.selectedCollectibleIds,
     required this.activeItems,
-    required this.onMoved,
-    required this.onPlaced,
     required this.onInteraction,
   });
 
   final Set<String> selectedIds;
-  final Map<String, Offset> positions;
+  final Set<String> selectedCollectibleIds;
   final Map<String, bool> activeItems;
-  final void Function(String id, Offset position) onMoved;
-  final _PlacementCallback onPlaced;
   final Future<void> Function(String id) onInteraction;
 
   @override
@@ -246,7 +361,6 @@ class _RoomCanvas extends StatefulWidget {
 class _RoomCanvasState extends State<_RoomCanvas>
     with SingleTickerProviderStateMixin {
   late final AnimationController _atmosphere;
-  RoomSlotType? _dragType;
 
   @override
   void initState() {
@@ -275,6 +389,11 @@ class _RoomCanvasState extends State<_RoomCanvas>
             .where((item) => widget.selectedIds.contains(item.id))
             .toList()
           ..sort((a, b) => a.layer.index.compareTo(b.layer.index));
+    final collectibles =
+        dailyDecorationCatalog
+            .where((item) => widget.selectedCollectibleIds.contains(item.id))
+            .toList()
+          ..sort((a, b) => a.layer.index.compareTo(b.layer.index));
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -283,7 +402,6 @@ class _RoomCanvasState extends State<_RoomCanvas>
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final canvasSize = constraints.biggest;
           return AnimatedBuilder(
             animation: _atmosphere,
             builder: (context, _) {
@@ -329,87 +447,26 @@ class _RoomCanvasState extends State<_RoomCanvas>
                       ),
                     ),
                   ),
-                  if (_dragType != null)
-                    for (final slot in _roomSlots.where(
-                      (slot) => slot.type == _dragType,
+                  for (final layer in RoomItemLayer.values) ...[
+                    for (final item in items.where(
+                      (item) => item.layer == layer,
                     ))
-                      Align(
-                        alignment: Alignment(
-                          slot.position.dx,
-                          slot.position.dy,
-                        ),
-                        child: Container(
-                          width: canvasSize.width * .16,
-                          height: canvasSize.width * .10,
-                          decoration: BoxDecoration(
-                            color: AppColors.sage.withValues(alpha: .18),
-                            border: Border.all(
-                              color: AppColors.sageSoft,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.sageSoft.withValues(
-                                  alpha: .36,
-                                ),
-                                blurRadius: 14,
-                              ),
-                            ],
-                          ),
-                        ),
+                      _RoomSprite(
+                        key: ValueKey(item.id),
+                        item: item,
+                        atmosphere: _atmosphere.value,
+                        active: widget.activeItems[item.id] ?? false,
+                        onInteraction: () => widget.onInteraction(item.id),
                       ),
-                  for (final item in items)
-                    _RoomSprite(
-                      key: ValueKey(item.id),
-                      item: item,
-                      position:
-                          widget.positions[item.id] ?? item.defaultPosition,
-                      canvasSize: canvasSize,
-                      atmosphere: _atmosphere.value,
-                      active: widget.activeItems[item.id] ?? false,
-                      onMoved: (position) => widget.onMoved(item.id, position),
-                      onDragState: (dragging) => setState(
-                        () => _dragType = dragging ? item.slotType : null,
+                    for (final item in collectibles.where(
+                      (item) => item.layer == layer,
+                    ))
+                      _CollectibleRoomSprite(
+                        key: ValueKey('collectible-${item.id}'),
+                        item: item,
+                        atmosphere: _atmosphere.value,
                       ),
-                      onPlaced: (position) {
-                        final slot = _nearestSlot(item.slotType, position);
-                        return widget.onPlaced(
-                          id: item.id,
-                          position: slot.position,
-                          slotId: slot.id,
-                        );
-                      },
-                      onInteraction: () => widget.onInteraction(item.id),
-                    ),
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    top: 12,
-                    child: IgnorePointer(
-                      child: Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: .48),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 13,
-                              vertical: 7,
-                            ),
-                            child: Text(
-                              'Drag to snap  •  Tap lights to switch on',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  ],
                 ],
               );
             },
@@ -418,62 +475,25 @@ class _RoomCanvasState extends State<_RoomCanvas>
       ),
     );
   }
-
-  _RoomSlot _nearestSlot(RoomSlotType type, Offset position) {
-    final compatible = _roomSlots.where((slot) => slot.type == type).toList();
-    compatible.sort((a, b) {
-      final aDistance = (a.position - position).distanceSquared;
-      final bDistance = (b.position - position).distanceSquared;
-      return aDistance.compareTo(bDistance);
-    });
-    return compatible.first;
-  }
 }
 
-class _RoomSprite extends StatefulWidget {
+class _RoomSprite extends StatelessWidget {
   const _RoomSprite({
     super.key,
     required this.item,
-    required this.position,
-    required this.canvasSize,
     required this.atmosphere,
     required this.active,
-    required this.onMoved,
-    required this.onDragState,
-    required this.onPlaced,
     required this.onInteraction,
   });
 
   final DecorationItem item;
-  final Offset position;
-  final Size canvasSize;
   final double atmosphere;
   final bool active;
-  final ValueChanged<Offset> onMoved;
-  final ValueChanged<bool> onDragState;
-  final Future<void> Function(Offset position) onPlaced;
   final Future<void> Function() onInteraction;
 
   @override
-  State<_RoomSprite> createState() => _RoomSpriteState();
-}
-
-class _RoomSpriteState extends State<_RoomSprite> {
-  late Offset _dragPosition = widget.position;
-  bool _dragging = false;
-
-  @override
-  void didUpdateWidget(covariant _RoomSprite oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!_dragging && oldWidget.position != widget.position) {
-      _dragPosition = widget.position;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final item = widget.item;
-    final phase = math.sin(widget.atmosphere * math.pi * 2);
+    final phase = math.sin(atmosphere * math.pi * 2);
     final isSwaying = item.id == 'hanging_plant' || item.id == 'potted_plant';
     final isCat = item.id == 'sleeping_cat';
     Widget sprite = Stack(
@@ -496,7 +516,7 @@ class _RoomSpriteState extends State<_RoomSprite> {
             ),
           ),
         AnimatedOpacity(
-          opacity: widget.active ? .72 : 0,
+          opacity: active ? .72 : 0,
           duration: const Duration(milliseconds: 350),
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -540,44 +560,21 @@ class _RoomSpriteState extends State<_RoomSprite> {
     }
 
     return Align(
-      alignment: Alignment(_dragPosition.dx, _dragPosition.dy),
+      alignment: Alignment(
+        item.placement.position.dx,
+        item.placement.position.dy,
+      ),
       child: FractionallySizedBox(
-        widthFactor: item.widthFactor,
+        widthFactor: item.placement.widthFactor,
         child: Semantics(
-          button: true,
+          button: item.isInteractive,
           label: item.isInteractive
-              ? '${item.name}, drag to move or tap to switch ${widget.active ? 'off' : 'on'}'
-              : '${item.name}, drag to move',
+              ? '${item.name}, tap to switch ${active ? 'off' : 'on'}'
+              : item.name,
           child: GestureDetector(
             key: Key('room-decoration-${item.id}'),
             behavior: HitTestBehavior.translucent,
-            onPanStart: (_) {
-              _dragging = true;
-              _dragPosition = widget.position;
-              HapticFeedback.selectionClick();
-              widget.onDragState(true);
-            },
-            onPanUpdate: (details) {
-              setState(() {
-                _dragPosition = Offset(
-                  _dragPosition.dx +
-                      details.delta.dx / (widget.canvasSize.width / 2),
-                  _dragPosition.dy +
-                      details.delta.dy / (widget.canvasSize.height / 2),
-                );
-              });
-              widget.onMoved(_dragPosition);
-            },
-            onPanEnd: (_) async {
-              _dragging = false;
-              widget.onDragState(false);
-              await widget.onPlaced(_dragPosition);
-            },
-            onPanCancel: () {
-              _dragging = false;
-              widget.onDragState(false);
-            },
-            onTap: item.isInteractive ? widget.onInteraction : null,
+            onTap: item.isInteractive ? onInteraction : null,
             child: TweenAnimationBuilder<double>(
               duration: const Duration(milliseconds: 420),
               curve: Curves.easeOutBack,
@@ -587,7 +584,107 @@ class _RoomSpriteState extends State<_RoomSprite> {
                 alignment: Alignment.bottomCenter,
                 child: child,
               ),
-              child: AspectRatio(aspectRatio: 1, child: sprite),
+              child: AspectRatio(
+                aspectRatio: item.contentAspectRatio,
+                child: sprite,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CollectibleRoomSprite extends StatelessWidget {
+  const _CollectibleRoomSprite({
+    super.key,
+    required this.item,
+    required this.atmosphere,
+  });
+
+  final CollectibleDecoration item;
+  final double atmosphere;
+
+  @override
+  Widget build(BuildContext context) {
+    final phase = math.sin(atmosphere * math.pi * 2);
+    final sways = item.id == 'starflower' || item.id == 'night_fern';
+    final glows = item.id == 'leaf_lantern';
+    Widget sprite = Stack(
+      fit: StackFit.expand,
+      children: [
+        if (item.slotType == RoomSlotType.floor)
+          Align(
+            alignment: const Alignment(0, .88),
+            child: FractionallySizedBox(
+              widthFactor: .64,
+              heightFactor: .055,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: .13),
+                  borderRadius: const BorderRadius.all(
+                    Radius.elliptical(100, 24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (glows)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(
+                    0xFFFFD779,
+                  ).withValues(alpha: .34 + (phase + 1) * .07),
+                  const Color(0xFFFFD779).withValues(alpha: 0),
+                ],
+              ),
+            ),
+          ),
+        AtlasSprite(
+          assetPath: AppAssets.rewardAvatarAtlasV2,
+          columns: 4,
+          rows: 4,
+          column: item.atlasColumn,
+          row: item.atlasRow,
+          contentRect: item.atlasCrop,
+          fit: BoxFit.contain,
+          alignment: Alignment.bottomCenter,
+        ),
+      ],
+    );
+    if (sways) {
+      sprite = Transform.rotate(
+        angle: phase * .009,
+        alignment: Alignment.bottomCenter,
+        child: sprite,
+      );
+    }
+    return Align(
+      alignment: Alignment(
+        item.placement.position.dx,
+        item.placement.position.dy,
+      ),
+      child: FractionallySizedBox(
+        widthFactor: item.placement.widthFactor,
+        child: Semantics(
+          label: item.name,
+          child: TweenAnimationBuilder<double>(
+            key: Key('room-collectible-${item.id}'),
+            duration: const Duration(milliseconds: 460),
+            curve: Curves.easeOutBack,
+            tween: Tween(begin: .78, end: 1),
+            builder: (context, scale, child) => Transform.scale(
+              scale: scale,
+              alignment: Alignment.bottomCenter,
+              child: child,
+            ),
+            child: AspectRatio(
+              aspectRatio: item.contentAspectRatio,
+              child: sprite,
             ),
           ),
         ),
@@ -707,6 +804,7 @@ class _InventoryCard extends StatelessWidget {
   const _InventoryCard({
     required this.index,
     required this.item,
+    required this.status,
     required this.unlocked,
     required this.selected,
     required this.onTap,
@@ -714,6 +812,7 @@ class _InventoryCard extends StatelessWidget {
 
   final int index;
   final DecorationItem item;
+  final InventoryStatus status;
   final bool unlocked;
   final bool selected;
   final VoidCallback onTap;
@@ -807,24 +906,31 @@ class _InventoryCard extends StatelessWidget {
                               horizontal: 12,
                               vertical: 8,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.lock_outline_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  '${item.unlockMinutes} min',
-                                  style: const TextStyle(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.lock_outline_rounded,
                                     color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                    size: 16,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    switch (status) {
+                                      InventoryStatus.crafting => 'Crafting',
+                                      InventoryStatus.pendingClaim => 'Claim',
+                                      _ => '${item.unlockMinutes} min',
+                                    },
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -852,7 +958,18 @@ class _InventoryCard extends StatelessWidget {
                   ),
               ],
             ),
-            Text(item.category, style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              status == InventoryStatus.owned
+                  ? 'Owned • tap to place'
+                  : status == InventoryStatus.placed
+                  ? 'Placed • tap to store'
+                  : status == InventoryStatus.pendingClaim
+                  ? 'Waiting in claim queue'
+                  : status == InventoryStatus.crafting
+                  ? 'In progress'
+                  : item.category,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),

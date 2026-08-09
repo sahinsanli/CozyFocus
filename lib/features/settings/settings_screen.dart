@@ -66,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
                       _SettingsRow(
                         icon: Icons.notifications_outlined,
                         title: 'Focus Reminders',
-                        subtitle: 'Gentle nudges to start your sessions',
+                        subtitle: 'Show a gentle nudge on the Focus screen',
                         trailing: Switch(
                           value: controller.focusReminders,
                           onChanged: controller.setFocusReminders,
@@ -155,7 +155,8 @@ class SettingsScreen extends StatelessWidget {
                       _SettingsRow(
                         icon: Icons.autorenew_rounded,
                         title: 'Auto-start Breaks',
-                        subtitle: 'Begin breaks after focus ends',
+                        subtitle:
+                            'Start a ${controller.shortBreakMinutes} min break after focus ends',
                         trailing: Switch(
                           value: controller.autoStartBreaks,
                           onChanged: controller.setAutoStartBreaks,

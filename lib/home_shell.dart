@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'core/assets/app_assets.dart';
+import 'core/models/badge_definition.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/design_tokens.dart';
+import 'core/widgets/app_scope.dart';
+import 'core/widgets/profile_avatar.dart';
 import 'features/focus/focus_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/room/room_screen.dart';
@@ -41,6 +43,15 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    if (controller.roomPlacementRequestId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_index != 1) setState(() => _index = 1);
+        controller.acknowledgeRoomPlacementRequest();
+      });
+    }
+    final badge = controller.nextBadgeCelebration;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(
@@ -73,17 +84,27 @@ class _HomeShellState extends State<HomeShell> {
                 key: const Key('profile-button'),
                 onTap: _openProfile,
                 customBorder: const CircleBorder(),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.sageSoft,
-                  backgroundImage: const AssetImage(AppAssets.appIcon),
+                child: ProfileAvatar(
+                  avatarId: controller.profileAvatarId,
+                  size: 40,
                 ),
               ),
             ),
           ),
         ],
       ),
-      body: IndexedStack(index: _index, children: _screens),
+      body: Stack(
+        children: [
+          IndexedStack(index: _index, children: _screens),
+          if (badge != null)
+            Positioned.fill(
+              child: _BadgeCelebration(
+                badge: badge,
+                onDismiss: () => controller.markBadgeCelebrationSeen(badge.id),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -129,6 +150,105 @@ class _HomeShellState extends State<HomeShell> {
                 onTap: () => setState(() => _index = 3),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeCelebration extends StatelessWidget {
+  const _BadgeCelebration({required this.badge, required this.onDismiss});
+
+  final BadgeDefinition badge;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: .52),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 720),
+              curve: Curves.elasticOut,
+              tween: Tween(begin: .25, end: 1),
+              builder: (context, scale, child) =>
+                  Transform.scale(scale: scale, child: child),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 360),
+                padding: const EdgeInsets.fromLTRB(28, 30, 28, 24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: badge.color, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: badge.color.withValues(alpha: .46),
+                      blurRadius: 48,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (final position in const [
+                      Alignment(-1, -.9),
+                      Alignment(.85, -1),
+                      Alignment(-.8, .75),
+                      Alignment(.95, .65),
+                    ])
+                      Align(
+                        alignment: position,
+                        child: Icon(
+                          Icons.auto_awesome_rounded,
+                          color: badge.color.withValues(alpha: .62),
+                          size: 22,
+                        ),
+                      ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'NEW BADGE',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: badge.color,
+                                letterSpacing: 1.5,
+                              ),
+                        ),
+                        const SizedBox(height: 18),
+                        CircleAvatar(
+                          radius: 46,
+                          backgroundColor: badge.color.withValues(alpha: .18),
+                          foregroundColor: badge.color,
+                          child: Icon(badge.icon, size: 48),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          badge.name,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(badge.description, textAlign: TextAlign.center),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: onDismiss,
+                            child: const Text('Lovely!'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 
 import '../assets/app_assets.dart';
+import 'app_audio_session.dart';
 
 enum AppSoundEffect { click, woodCut, puttingItem, claimReward, catMeow }
 
@@ -43,6 +44,8 @@ class AssetSoundEffectService implements SoundEffectService {
       await loadOperation;
     } catch (_) {
       _loadOperations.remove(effect);
+      _players.remove(effect);
+      await player.dispose();
       rethrow;
     }
     return player;
@@ -50,6 +53,7 @@ class AssetSoundEffectService implements SoundEffectService {
 
   @override
   Future<void> play(AppSoundEffect effect) async {
+    await AppAudioSession.activate();
     final player = await _playerFor(effect);
     await player.setVolume(_volumes[effect]!);
     await player.seek(Duration.zero);

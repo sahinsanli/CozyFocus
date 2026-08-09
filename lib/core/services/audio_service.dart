@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 
 import '../assets/app_assets.dart';
+import 'app_audio_session.dart';
 
 abstract interface class AudioService {
   bool supports(String id);
@@ -39,6 +40,8 @@ class AssetAudioService implements AudioService {
       await loadOperation;
     } catch (_) {
       _loadOperations.remove(id);
+      _players.remove(id);
+      await player.dispose();
       rethrow;
     }
     return player;
@@ -46,6 +49,7 @@ class AssetAudioService implements AudioService {
 
   @override
   Future<void> play(String id, double volume) async {
+    await AppAudioSession.activate();
     final player = await _playerFor(id);
     await player.setVolume(volume.clamp(0, 1));
     unawaited(player.play());

@@ -93,7 +93,7 @@ class SoundsScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 15),
                             ),
                             icon: const Icon(Icons.shuffle_rounded),
-                            label: Text('Mix ($activeCount)'),
+                            label: Text('Active Mix ($activeCount)'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -140,14 +140,17 @@ class SoundsScreen extends StatelessWidget {
                             child: DropdownButton<int>(
                               value: controller.sleepTimerMinutes,
                               dropdownColor: Theme.of(context).cardColor,
-                              items: const [15, 30, 45, 60]
-                                  .map(
-                                    (value) => DropdownMenuItem(
-                                      value: value,
-                                      child: Text('$value min'),
-                                    ),
-                                  )
-                                  .toList(),
+                              items:
+                                  (controller.testMode
+                                          ? const [1, 15, 30, 45, 60]
+                                          : const [15, 30, 45, 60])
+                                      .map(
+                                        (value) => DropdownMenuItem(
+                                          value: value,
+                                          child: Text('$value min'),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   controller.setSleepTimer(value);
@@ -158,6 +161,57 @@ class SoundsScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: controller.sleepTimerActive
+                          ? OutlinedButton.icon(
+                              onPressed: controller.cancelSleepTimer,
+                              style: OutlinedButton.styleFrom(
+                                shape: const StadiumBorder(),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              icon: const Icon(Icons.timer_off_outlined),
+                              label: Text(
+                                'Cancel timer • ${controller.sleepTimerLabel}',
+                              ),
+                            )
+                          : FilledButton.icon(
+                              onPressed: () async {
+                                final started = await controller
+                                    .startSleepTimer();
+                                if (!started && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Play at least one sound before starting the sleep timer.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                shape: const StadiumBorder(),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              icon: const Icon(Icons.bedtime_outlined),
+                              label: const Text('Start sleep timer'),
+                            ),
+                    ),
+                    if (controller.sleepTimerJustFinished) ...[
+                      const SizedBox(height: 9),
+                      Text(
+                        'Sleep timer complete — all sounds stopped.',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Text(
                       'Rain, campfire, forest, and piano are ready to mix. More ambience loops are coming soon.',

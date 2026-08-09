@@ -78,22 +78,17 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
             ? InventoryStatus.placed
             : InventoryStatus.owned,
       );
-      final position = positions[item.id];
       if (placed) {
-        final snapped = _nearestSlot(
-          item.slotType,
-          position ??
-              NormalizedPosition(
-                item.defaultPosition.dx,
-                item.defaultPosition.dy,
-              ),
+        final canonical = NormalizedPosition(
+          item.placement.position.dx,
+          item.placement.position.dy,
         );
-        migratedPositions[item.id] = snapped.$2;
+        migratedPositions[item.id] = canonical;
         roomPlacements[item.id] = RoomPlacement(
           itemId: item.id,
-          slotId: snapped.$1,
-          layer: item.layer.index,
-          position: snapped.$2,
+          slotId: item.placement.slotId,
+          layer: item.placement.layer.index,
+          position: canonical,
           interactionEnabled: false,
         );
       }
@@ -186,38 +181,4 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
     'armchair' => 'chair',
     _ => legacyId,
   };
-
-  static (String, NormalizedPosition) _nearestSlot(
-    RoomSlotType type,
-    NormalizedPosition position,
-  ) {
-    final compatible = _migrationSlots
-        .where((slot) => slot.$2 == type)
-        .toList();
-    compatible.sort((a, b) {
-      final aDistance =
-          (a.$3.x - position.x) * (a.$3.x - position.x) +
-          (a.$3.y - position.y) * (a.$3.y - position.y);
-      final bDistance =
-          (b.$3.x - position.x) * (b.$3.x - position.x) +
-          (b.$3.y - position.y) * (b.$3.y - position.y);
-      return aDistance.compareTo(bDistance);
-    });
-    return (compatible.first.$1, compatible.first.$3);
-  }
-
-  static const _migrationSlots = <(String, RoomSlotType, NormalizedPosition)>[
-    ('floor_back_left', RoomSlotType.floor, NormalizedPosition(-.34, .04)),
-    ('floor_back_right', RoomSlotType.floor, NormalizedPosition(.44, -.02)),
-    ('floor_middle_left', RoomSlotType.floor, NormalizedPosition(-.18, .29)),
-    ('floor_middle_right', RoomSlotType.floor, NormalizedPosition(.47, .24)),
-    ('floor_front_center', RoomSlotType.floor, NormalizedPosition(.02, .62)),
-    ('floor_front_right', RoomSlotType.floor, NormalizedPosition(.43, .58)),
-    ('wall_left', RoomSlotType.wall, NormalizedPosition(-.38, -.52)),
-    ('wall_right', RoomSlotType.wall, NormalizedPosition(.43, -.56)),
-    ('ceiling_left', RoomSlotType.ceiling, NormalizedPosition(-.52, -.56)),
-    ('ceiling_right', RoomSlotType.ceiling, NormalizedPosition(.62, -.55)),
-    ('table_left', RoomSlotType.tabletop, NormalizedPosition(-.42, -.04)),
-    ('table_right', RoomSlotType.tabletop, NormalizedPosition(-.07, 0)),
-  ];
 }

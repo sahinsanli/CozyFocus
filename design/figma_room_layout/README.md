@@ -21,7 +21,7 @@ telefon ekranı boyutunda değil, mutlaka 899×1748 oluştur.
 1. Figma'da 899×1748 boyutunda yeni bir Frame oluştur.
 2. `background/empty_room_base_v2.png` dosyasını Frame içine ekle, X/Y değerini
    0/0 yap ve kilitle.
-3. `items/` klasöründeki 18 PNG dosyasını Frame içine sürükle.
+3. `items/` klasöründeki 12 PNG dosyasını Frame içine sürükle.
 4. Her layer adını dosya adıyla aynı bırak: `desk`, `chair`, `tea_cup` vb.
 5. Bütün item layer'larını Frame'in **doğrudan çocuğu** olarak tut. Group,
    component veya nested frame içine alma. Aksi durumda Figma sağ panelindeki
@@ -42,10 +42,10 @@ içindir. Figma'da gerçek Group oluşturma; layer'ları doğrudan Frame altınd
 
 | Anchor | Bağlı sub-item'lar |
 |---|---|
-| `desk` | `desk_lamp`, `candle`, `tea_cup`, `desk_clock` |
-| `bookshelf` | `book_stack`, `tiny_vase`, `owl_figure`, `leaf_lantern` |
+| `desk` | `candle`, `tea_cup` |
+| `bookshelf` | `owl_figure`, `leaf_lantern` |
 | `rug` | `sleeping_cat` |
-| Bağımsız anchor | `chair`, `potted_plant`, `wall_art`, `hanging_plant`, `starflower`, `night_fern` |
+| Bağımsız anchor | `chair`, `wall_art`, `hanging_plant`, `night_fern` |
 
 Bir sub-item yalnız bağlı olduğu anchor kazanıldıktan/yerleştirildikten sonra
 odada gösterilmelidir. Bu kural mevcut uygulama mantığıyla uyumludur.
@@ -53,9 +53,9 @@ odada gösterilmelidir. Bu kural mevcut uygulama mantığıyla uyumludur.
 ## Önerilen çalışma sırası
 
 1. `rug`
-2. `night_fern`, `starflower`
+2. `night_fern`
 3. `bookshelf`
-4. `desk`, `potted_plant`
+4. `desk`
 5. `chair`, `sleeping_cat`
 6. `wall_art`, `hanging_plant`
 7. Masa ve kitaplık üzerindeki küçük sub-item'lar
@@ -82,10 +82,11 @@ parçalara kurmayı kolaylaştırır.
 ## Ölçüm kuralları
 
 - X/Y ölçümü Frame'in sol üst köşesine göre olmalı.
+- Layer order Figma panel sırasıdır: `1` en ön, büyük değerler daha arkadadır.
 - W/H değerleri Figma'da görünen son item boyutu olmalı; doğal PNG ölçüsü olmak
   zorunda değildir.
 - Ondalıklı değerleri yuvarlama; Figma ne gösteriyorsa yaz.
-- Rotation kullanma. Zorunluysa ayrıca `notes` sütununa açıyı yaz; mevcut
-  Flutter yerleşim sözleşmesi X/Y/W/H ve layer order kullanır.
+- Rotation kullanıldıysa `notes` sütununa açıyı yaz. Flutter yerleşimi bu açıyı
+  X/Y/W/H ve layer order ile birlikte uygular.
 - Item'ın görünür kısmını ayrıca crop etme; PNG dosyaları zaten alfa sınırlarına
   göre kırpılmıştır.

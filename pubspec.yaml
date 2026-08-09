@@ -73,6 +73,7 @@ flutter:
     - assets/placeholders/
     - assets/visuals/
     - assets/visuals/v2/
+    - assets/visuals/room_items/
 
   fonts:
     - family: Quicksand

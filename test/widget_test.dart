@@ -196,7 +196,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('gentle goal collection paints all eight reward previews', (
+  testWidgets('gentle goal collection paints every configured reward preview', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -216,7 +216,7 @@ void main() {
     for (final item in dailyDecorationCatalog) {
       expect(find.byKey(Key('gentle-goal-${item.id}')), findsOneWidget);
     }
-    expect(find.text('Mystery'), findsNWidgets(8));
+    expect(find.text('Mystery'), findsNWidgets(dailyDecorationCatalog.length));
     expect(tester.takeException(), isNull);
   });
 

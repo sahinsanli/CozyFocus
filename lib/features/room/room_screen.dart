@@ -268,10 +268,9 @@ class RoomScreen extends StatelessWidget {
                                     child: SizedBox.expand(
                                       child: AtlasSprite(
                                         key: Key('gentle-goal-${item.id}'),
-                                        assetPath:
-                                            AppAssets.rewardAvatarAtlasV2,
-                                        columns: 4,
-                                        rows: 4,
+                                        assetPath: item.assetPath,
+                                        columns: 1,
+                                        rows: 1,
                                         column: item.atlasColumn,
                                         row: item.atlasRow,
                                         contentRect: item.atlasCrop,
@@ -384,16 +383,12 @@ class _RoomCanvasState extends State<_RoomCanvas>
 
   @override
   Widget build(BuildContext context) {
-    final items =
-        decorationCatalog
-            .where((item) => widget.selectedIds.contains(item.id))
-            .toList()
-          ..sort((a, b) => a.layer.index.compareTo(b.layer.index));
-    final collectibles =
-        dailyDecorationCatalog
-            .where((item) => widget.selectedCollectibleIds.contains(item.id))
-            .toList()
-          ..sort((a, b) => a.layer.index.compareTo(b.layer.index));
+    final items = decorationCatalog
+        .where((item) => widget.selectedIds.contains(item.id))
+        .toList();
+    final collectibles = dailyDecorationCatalog
+        .where((item) => widget.selectedCollectibleIds.contains(item.id))
+        .toList();
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -402,17 +397,48 @@ class _RoomCanvasState extends State<_RoomCanvas>
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final canvasSize = constraints.biggest;
           return AnimatedBuilder(
             animation: _atmosphere,
             builder: (context, _) {
               final wave = math.sin(_atmosphere.value * math.pi * 2);
+              final placedSprites = <({int order, Widget sprite})>[
+                for (final item in items)
+                  (
+                    order: item.placement.figmaLayerOrder,
+                    sprite: _RoomSprite(
+                      key: ValueKey(item.id),
+                      item: item,
+                      canvasSize: canvasSize,
+                      atmosphere: _atmosphere.value,
+                      active: widget.activeItems[item.id] ?? false,
+                      onInteraction: () => widget.onInteraction(item.id),
+                    ),
+                  ),
+                for (final item in collectibles)
+                  (
+                    order: item.placement.figmaLayerOrder,
+                    sprite: _CollectibleRoomSprite(
+                      key: ValueKey('collectible-${item.id}'),
+                      item: item,
+                      canvasSize: canvasSize,
+                      atmosphere: _atmosphere.value,
+                    ),
+                  ),
+              ]..sort((a, b) => b.order.compareTo(a.order));
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    AppAssets.emptyRoomBaseV2,
-                    fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high,
+                  Positioned(
+                    left: -1 / roomDesignWidth * canvasSize.width,
+                    top: 0,
+                    width: canvasSize.width,
+                    height: canvasSize.height,
+                    child: Image.asset(
+                      AppAssets.emptyRoomBaseV2,
+                      fit: BoxFit.fill,
+                      filterQuality: FilterQuality.high,
+                    ),
                   ),
                   Positioned.fill(
                     child: IgnorePointer(
@@ -447,26 +473,7 @@ class _RoomCanvasState extends State<_RoomCanvas>
                       ),
                     ),
                   ),
-                  for (final layer in RoomItemLayer.values) ...[
-                    for (final item in items.where(
-                      (item) => item.layer == layer,
-                    ))
-                      _RoomSprite(
-                        key: ValueKey(item.id),
-                        item: item,
-                        atmosphere: _atmosphere.value,
-                        active: widget.activeItems[item.id] ?? false,
-                        onInteraction: () => widget.onInteraction(item.id),
-                      ),
-                    for (final item in collectibles.where(
-                      (item) => item.layer == layer,
-                    ))
-                      _CollectibleRoomSprite(
-                        key: ValueKey('collectible-${item.id}'),
-                        item: item,
-                        atmosphere: _atmosphere.value,
-                      ),
-                  ],
+                  for (final entry in placedSprites) entry.sprite,
                 ],
               );
             },
@@ -481,12 +488,14 @@ class _RoomSprite extends StatelessWidget {
   const _RoomSprite({
     super.key,
     required this.item,
+    required this.canvasSize,
     required this.atmosphere,
     required this.active,
     required this.onInteraction,
   });
 
   final DecorationItem item;
+  final Size canvasSize;
   final double atmosphere;
   final bool active;
   final Future<void> Function() onInteraction;
@@ -494,7 +503,7 @@ class _RoomSprite extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phase = math.sin(atmosphere * math.pi * 2);
-    final isSwaying = item.id == 'hanging_plant' || item.id == 'potted_plant';
+    final isSwaying = item.id == 'hanging_plant';
     final isCat = item.id == 'sleeping_cat';
     Widget sprite = Stack(
       fit: StackFit.expand,
@@ -530,24 +539,18 @@ class _RoomSprite extends StatelessWidget {
             ),
           ),
         ),
-        AtlasSprite(
-          assetPath: item.assetPath,
-          columns: item.atlasColumns,
-          rows: item.atlasRows,
-          column: item.atlasColumn,
-          row: item.atlasRow,
-          contentRect: item.atlasCrop,
+        Image.asset(
+          item.assetPath,
           fit: BoxFit.contain,
           alignment: Alignment.bottomCenter,
+          filterQuality: FilterQuality.high,
         ),
       ],
     );
     if (isSwaying) {
       sprite = Transform.rotate(
-        angle: phase * (item.id == 'hanging_plant' ? .025 : .009),
-        alignment: item.id == 'hanging_plant'
-            ? Alignment.topCenter
-            : Alignment.bottomCenter,
+        angle: phase * .025,
+        alignment: Alignment.topCenter,
         child: sprite,
       );
     } else if (isCat) {
@@ -559,13 +562,14 @@ class _RoomSprite extends StatelessWidget {
       );
     }
 
-    return Align(
-      alignment: Alignment(
-        item.placement.position.dx,
-        item.placement.position.dy,
-      ),
-      child: FractionallySizedBox(
-        widthFactor: item.placement.widthFactor,
+    final rect = item.placement.figmaRect;
+    return Positioned(
+      left: rect.left / roomDesignWidth * canvasSize.width,
+      top: rect.top / roomDesignHeight * canvasSize.height,
+      width: rect.width / roomDesignWidth * canvasSize.width,
+      height: rect.height / roomDesignHeight * canvasSize.height,
+      child: Transform.rotate(
+        angle: item.placement.rotationDegrees * math.pi / 180,
         child: Semantics(
           button: item.isInteractive,
           label: item.isInteractive
@@ -584,10 +588,7 @@ class _RoomSprite extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: child,
               ),
-              child: AspectRatio(
-                aspectRatio: item.contentAspectRatio,
-                child: sprite,
-              ),
+              child: sprite,
             ),
           ),
         ),
@@ -600,16 +601,18 @@ class _CollectibleRoomSprite extends StatelessWidget {
   const _CollectibleRoomSprite({
     super.key,
     required this.item,
+    required this.canvasSize,
     required this.atmosphere,
   });
 
   final CollectibleDecoration item;
+  final Size canvasSize;
   final double atmosphere;
 
   @override
   Widget build(BuildContext context) {
     final phase = math.sin(atmosphere * math.pi * 2);
-    final sways = item.id == 'starflower' || item.id == 'night_fern';
+    final sways = item.id == 'night_fern';
     final glows = item.id == 'leaf_lantern';
     Widget sprite = Stack(
       fit: StackFit.expand,
@@ -644,15 +647,11 @@ class _CollectibleRoomSprite extends StatelessWidget {
               ),
             ),
           ),
-        AtlasSprite(
-          assetPath: AppAssets.rewardAvatarAtlasV2,
-          columns: 4,
-          rows: 4,
-          column: item.atlasColumn,
-          row: item.atlasRow,
-          contentRect: item.atlasCrop,
+        Image.asset(
+          item.assetPath,
           fit: BoxFit.contain,
           alignment: Alignment.bottomCenter,
+          filterQuality: FilterQuality.high,
         ),
       ],
     );
@@ -663,13 +662,14 @@ class _CollectibleRoomSprite extends StatelessWidget {
         child: sprite,
       );
     }
-    return Align(
-      alignment: Alignment(
-        item.placement.position.dx,
-        item.placement.position.dy,
-      ),
-      child: FractionallySizedBox(
-        widthFactor: item.placement.widthFactor,
+    final rect = item.placement.figmaRect;
+    return Positioned(
+      left: rect.left / roomDesignWidth * canvasSize.width,
+      top: rect.top / roomDesignHeight * canvasSize.height,
+      width: rect.width / roomDesignWidth * canvasSize.width,
+      height: rect.height / roomDesignHeight * canvasSize.height,
+      child: Transform.rotate(
+        angle: item.placement.rotationDegrees * math.pi / 180,
         child: Semantics(
           label: item.name,
           child: TweenAnimationBuilder<double>(
@@ -682,10 +682,7 @@ class _CollectibleRoomSprite extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: child,
             ),
-            child: AspectRatio(
-              aspectRatio: item.contentAspectRatio,
-              child: sprite,
-            ),
+            child: sprite,
           ),
         ),
       ),

@@ -581,11 +581,12 @@ class _RewardPreview extends StatelessWidget {
         (item) => item.id == pending!.itemId,
       );
       sprite = AtlasSprite(
-        assetPath: AppAssets.rewardAvatarAtlasV2,
-        columns: 4,
-        rows: 4,
+        assetPath: item.assetPath,
+        columns: 1,
+        rows: 1,
         column: item.atlasColumn,
         row: item.atlasRow,
+        contentRect: item.atlasCrop,
         fit: BoxFit.contain,
       );
     } else {

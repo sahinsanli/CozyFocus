@@ -812,9 +812,14 @@ class AppController extends ChangeNotifier {
       );
     }
     pendingRewards.removeWhere(
-      (reward) =>
-          reward.kind == PendingRewardKind.craftedItem &&
-          !decorationCatalog.any((item) => item.id == reward.itemId),
+      (reward) => switch (reward.kind) {
+        PendingRewardKind.craftedItem => !decorationCatalog.any(
+          (item) => item.id == reward.itemId,
+        ),
+        PendingRewardKind.dailyDecoration => !dailyDecorationCatalog.any(
+          (item) => item.id == reward.itemId,
+        ),
+      },
     );
 
     final active = currentCraftItem;
@@ -1387,7 +1392,6 @@ class AppController extends ChangeNotifier {
       '${date.day.toString().padLeft(2, '0')}';
 
   static String _currentDecorationId(String legacyId) => switch (legacyId) {
-    'cactus' => 'potted_plant',
     'armchair' => 'chair',
     _ => legacyId,
   };

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cozy_focus/core/models/app_progress.dart';
+import 'package:cozy_focus/core/models/decoration_item.dart';
 import 'package:cozy_focus/core/services/progress_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -109,7 +110,7 @@ void main() {
       'shortBreakMinutes': 10,
       'sleepTimerMinutes': 60,
       'dailyMinutes': jsonEncode({'2026-08-06': 150}),
-      'selectedDecorations': ['cactus', 'bookshelf'],
+      'selectedDecorations': ['armchair', 'bookshelf'],
       'decorationPositions': positions,
       'volume_rain': .55,
       'timerStatus': 'paused',
@@ -127,18 +128,22 @@ void main() {
     expect(migrated.dailyMinutes['2026-08-06'], 150);
     expect(migrated.soundVolumes['rain'], .55);
     expect(migrated.timer.status, 'paused');
-    expect(migrated.decorationPositions['bookshelf']?.x, .74);
-    expect(migrated.decorationPositions['bookshelf']?.y, -.18);
-    expect(migrated.roomPlacements['bookshelf']?.slotId, 'bookshelf_home');
-    expect(migrated.roomPlacements['potted_plant']?.slotId, 'plant_home');
-    expect(migrated.inventory['potted_plant']?.status, InventoryStatus.placed);
-    expect(migrated.inventory['bookshelf']?.status, InventoryStatus.placed);
-    expect(migrated.inventory['chair']?.status, InventoryStatus.owned);
-    expect(migrated.inventory['sleeping_cat']?.status, InventoryStatus.locked);
-    expect(
-      migrated.roomPlacements.keys,
-      containsAll(['potted_plant', 'bookshelf']),
+    final bookshelf = decorationCatalog.firstWhere(
+      (item) => item.id == 'bookshelf',
     );
+    expect(
+      migrated.decorationPositions['bookshelf']?.x,
+      bookshelf.placement.position.dx,
+    );
+    expect(
+      migrated.decorationPositions['bookshelf']?.y,
+      bookshelf.placement.position.dy,
+    );
+    expect(migrated.roomPlacements['bookshelf']?.slotId, 'bookshelf_home');
+    expect(migrated.inventory['bookshelf']?.status, InventoryStatus.placed);
+    expect(migrated.inventory['chair']?.status, InventoryStatus.placed);
+    expect(migrated.inventory['sleeping_cat']?.status, InventoryStatus.locked);
+    expect(migrated.roomPlacements.keys, containsAll(['chair', 'bookshelf']));
     expect(migrated.badges['night_owl']?.earnedAt, isNotNull);
 
     expect(preferences.getString('username'), 'Legacy Maya');

@@ -177,7 +177,6 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
   };
 
   static String _currentDecorationId(String legacyId) => switch (legacyId) {
-    'cactus' => 'potted_plant',
     'armchair' => 'chair',
     _ => legacyId,
   };

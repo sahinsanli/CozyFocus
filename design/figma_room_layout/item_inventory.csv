@@ -1,19 +1,13 @@
 item_id,display_name_tr,collection,role,parent_id,slot_type,flutter_layer,z_order_hint,asset_file,pixel_width,pixel_height
-rug,Botanik Halı,main,anchor,,floor,floorFoundation,20,items/rug.png,299,238
-night_fern,Gece Eğreltisi,gentle_goal,anchor,,floor,floorBack,30,items/night_fern.png,262,277
-starflower,Yıldız Çiçeği,gentle_goal,anchor,,floor,floorBack,31,items/starflower.png,202,276
-bookshelf,Kitaplık,main,anchor,,floor,floorBack,40,items/bookshelf.png,284,268
-desk,Çalışma Masası,main,anchor,,floor,floorMiddle,50,items/desk.png,299,308
-potted_plant,Moonleaf Saksı Bitkisi,main,anchor,,floor,floorMiddle,51,items/potted_plant.png,200,291
-chair,Çalışma Sandalyesi,main,anchor,,floor,floorFront,60,items/chair.png,325,321
-sleeping_cat,Uyuyan Kedi,main,sub-item,rug,floor,floorFront,61,items/sleeping_cat.png,322,262
-wall_art,Botanik Tablo,main,anchor,,wall,wall,10,items/wall_art.png,210,278
-hanging_plant,Asılı Bitki,main,anchor,,ceiling,wall,11,items/hanging_plant.png,202,315
-desk_lamp,Masa Lambası,main,sub-item,desk,tabletop,tabletop,70,items/desk_lamp.png,206,320
-candle,Moon Mum,main,sub-item,desk,tabletop,tabletop,71,items/candle.png,216,294
-tea_cup,Moon Çayı,gentle_goal,sub-item,desk,tabletop,tabletop,72,items/tea_cup.png,262,212
-desk_clock,Masa Saati,gentle_goal,sub-item,desk,tabletop,tabletop,73,items/desk_clock.png,204,220
-book_stack,Kitap Yığını,gentle_goal,sub-item,bookshelf,tabletop,tabletop,74,items/book_stack.png,258,236
-tiny_vase,Küçük Vazo,gentle_goal,sub-item,bookshelf,tabletop,tabletop,75,items/tiny_vase.png,142,272
-owl_figure,Baykuş Figürü,gentle_goal,sub-item,bookshelf,tabletop,tabletop,76,items/owl_figure.png,184,240
-leaf_lantern,Yaprak Fener,gentle_goal,sub-item,bookshelf,tabletop,light,80,items/leaf_lantern.png,170,278
+rug,Botanik Halı,main,anchor,,floor,floorFoundation,11,items/rug.png,299,238
+night_fern,Gece Eğreltisi,gentle_goal,anchor,,floor,floorBack,6,items/night_fern.png,262,277
+bookshelf,Kitaplık,main,anchor,,floor,floorBack,12,items/bookshelf.png,284,268
+desk,Çalışma Masası,main,anchor,,floor,floorMiddle,9,items/desk.png,299,308
+chair,Çalışma Sandalyesi,main,anchor,,floor,floorFront,10,items/chair.png,325,321
+sleeping_cat,Uyuyan Kedi,main,sub-item,rug,floor,floorFront,3,items/sleeping_cat.png,322,262
+wall_art,Botanik Tablo,main,anchor,,wall,wall,1,items/wall_art.png,210,278
+hanging_plant,Asılı Bitki,main,anchor,,ceiling,wall,8,items/hanging_plant.png,202,315
+candle,Moon Mum,main,sub-item,desk,tabletop,tabletop,4,items/candle.png,216,294
+tea_cup,Moon Çayı,gentle_goal,sub-item,desk,tabletop,tabletop,2,items/tea_cup.png,262,212
+owl_figure,Baykuş Figürü,gentle_goal,sub-item,bookshelf,tabletop,tabletop,5,items/owl_figure.png,184,240
+leaf_lantern,Yaprak Fener,gentle_goal,sub-item,bookshelf,tabletop,light,7,items/leaf_lantern.png,170,278

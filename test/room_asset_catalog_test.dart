@@ -8,152 +8,163 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('room v2 catalogs contain every planned visual asset', () {
-    expect(decorationCatalog, hasLength(10));
-    expect(dailyDecorationCatalog, hasLength(8));
+  test('room catalogs contain exactly the items retained in the Figma CSV', () {
+    expect(decorationCatalog.map((item) => item.id).toList(), [
+      'desk',
+      'chair',
+      'rug',
+      'bookshelf',
+      'candle',
+      'wall_art',
+      'hanging_plant',
+      'sleeping_cat',
+    ]);
+    expect(dailyDecorationCatalog.map((item) => item.id).toList(), [
+      'tea_cup',
+      'night_fern',
+      'owl_figure',
+      'leaf_lantern',
+    ]);
     expect(profileAvatarCatalog, hasLength(6));
-    expect(
-      decorationCatalog.map((item) => item.id).toSet(),
-      hasLength(decorationCatalog.length),
-    );
-    expect(
-      decorationCatalog.map((item) => item.craftAtlasRow),
-      everyElement(greaterThanOrEqualTo(0)),
-    );
-    expect(
-      decorationCatalog.map((item) => item.defaultSlotId),
-      everyElement(isNotEmpty),
-    );
-    expect(
-      decorationCatalog.map((item) => item.placement.slotId).toSet(),
-      hasLength(decorationCatalog.length),
-      reason: 'Every decoration must have exactly one exclusive home.',
-    );
-    for (final item in decorationCatalog) {
-      expect(item.placement.position.dx, inInclusiveRange(-.75, .75));
-      expect(item.placement.position.dy, inInclusiveRange(-.65, .65));
-      expect(item.placement.widthFactor, inInclusiveRange(.08, .95));
-      final supportId = item.placement.supportItemId;
-      if (supportId != null) {
-        expect(
-          decorationCatalog.indexWhere(
-            (candidate) => candidate.id == supportId,
-          ),
-          lessThan(decorationCatalog.indexOf(item)),
-          reason: '${item.id} must unlock after its support $supportId.',
-        );
-      }
-    }
-    final rug = decorationCatalog.firstWhere((item) => item.id == 'rug');
-    final desk = decorationCatalog.firstWhere((item) => item.id == 'desk');
-    final cat = decorationCatalog.firstWhere(
-      (item) => item.id == 'sleeping_cat',
-    );
-    expect(rug.placement.layer.index, lessThan(desk.placement.layer.index));
-    expect(cat.placement.layer.index, greaterThan(desk.placement.layer.index));
   });
 
-  test('generated sprite atlases have transparent corners', () async {
-    for (final path in const [
-      AppAssets.mainItemAtlasV2,
-      AppAssets.rewardAvatarAtlasV2,
-      AppAssets.craftingAtlasAV2,
-      AppAssets.craftingAtlasBV2,
-      AppAssets.craftingAtlasCV2,
-    ]) {
-      final bytes = await File(path).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final pixels = await frame.image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
+  test('Flutter placements match every filled Figma CSV value exactly', () {
+    final allPlacements = <String, RoomPlacementSpec>{
+      for (final item in decorationCatalog) item.id: item.placement,
+      for (final item in dailyDecorationCatalog) item.id: item.placement,
+    };
+    final rows = File('design/figma_room_layout/figma_measurements.csv')
+        .readAsLinesSync()
+        .skip(1)
+        .where((line) => line.trim().isNotEmpty)
+        .where((line) => !line.startsWith('image_1,'))
+        .toList();
+
+    expect(rows, hasLength(allPlacements.length));
+    for (final row in rows) {
+      final cells = row.split(',');
+      final id = cells[0];
+      final placement = allPlacements[id];
+      expect(placement, isNotNull, reason: '$id must exist in the app catalog');
+      expect(
+        placement!.figmaRect,
+        ui.Rect.fromLTWH(
+          double.parse(cells[1]),
+          double.parse(cells[2]),
+          double.parse(cells[3]),
+          double.parse(cells[4]),
+        ),
+        reason: id,
       );
-      expect(pixels, isNotNull, reason: path);
-      expect(pixels!.getUint8(3), 0, reason: path);
-      frame.image.dispose();
-      codec.dispose();
-    }
-  });
-
-  test('completed room forms one connected study composition', () {
-    const canvasWidth = 899.0;
-    const canvasHeight = 1748.0;
-    ui.Rect bounds(DecorationItem item) {
-      final size = canvasWidth * item.placement.widthFactor;
-      final position = item.placement.position;
-      return ui.Rect.fromLTWH(
-        (canvasWidth - size) / 2 * (1 + position.dx),
-        (canvasHeight - size) / 2 * (1 + position.dy),
-        size,
-        size,
+      expect(placement.figmaLayerOrder, int.parse(cells[5]), reason: id);
+      final rotationMatch = RegExp(r'rotation=(\d+)').firstMatch(cells[6]);
+      expect(
+        placement.rotationDegrees,
+        rotationMatch == null ? 0 : double.parse(rotationMatch.group(1)!),
+        reason: id,
       );
     }
-
-    DecorationItem item(String id) {
-      return decorationCatalog.firstWhere((candidate) => candidate.id == id);
-    }
-
-    final desk = bounds(item('desk'));
-    final chair = bounds(item('chair'));
-    final rug = bounds(item('rug'));
-    final bookshelf = bounds(item('bookshelf'));
-    final plant = bounds(item('potted_plant'));
-    final lamp = bounds(item('desk_lamp'));
-    final candle = bounds(item('candle'));
-    final cat = bounds(item('sleeping_cat'));
-    final wallArt = bounds(item('wall_art'));
-    final hangingPlant = bounds(item('hanging_plant'));
-
-    expect(rug.contains(chair.center), isTrue);
-    expect(rug.contains(cat.center), isTrue);
-    expect(desk.contains(lamp.center), isTrue);
-    expect(desk.contains(candle.center), isTrue);
-    expect(chair.center.dx, closeTo(desk.center.dx, 100));
-    expect(chair.top, lessThan(desk.bottom));
-    expect(bookshelf.center.dx, greaterThan(desk.center.dx));
-    expect(bookshelf.left, lessThan(desk.right + 80));
-    expect(plant.center.dx, greaterThan(desk.center.dx));
-    expect(plant.left, lessThan(bookshelf.right + 50));
-    expect(wallArt.center.dx, closeTo(bookshelf.center.dx, 120));
-    expect(wallArt.bottom, lessThan(desk.top));
-    expect(
-      hangingPlant.center.dx,
-      inInclusiveRange(desk.center.dx, bookshelf.center.dx),
-    );
-    expect(hangingPlant.bottom, lessThan(desk.top));
   });
 
-  test('gentle goal decor has fixed room homes and valid supports', () {
-    expect(
-      dailyDecorationCatalog.map((item) => item.placement.slotId).toSet(),
-      hasLength(dailyDecorationCatalog.length),
-    );
-    for (final item in dailyDecorationCatalog) {
-      expect(item.placement.position.dx, inInclusiveRange(-.80, .80));
-      expect(item.placement.position.dy, inInclusiveRange(-.65, .65));
-      expect(item.placement.widthFactor, inInclusiveRange(.08, .35));
-      final supportId = item.placement.supportItemId;
+  test('every Figma rect intersects the 899 x 1748 room canvas', () {
+    final placements = [
+      ...decorationCatalog.map((item) => item.placement),
+      ...dailyDecorationCatalog.map((item) => item.placement),
+    ];
+    expect(placements.map((placement) => placement.figmaLayerOrder).toSet(), {
+      for (var index = 1; index <= 12; index++) index,
+    });
+    for (final placement in placements) {
+      expect(
+        placement.figmaRect.overlaps(
+          const ui.Rect.fromLTWH(0, 0, roomDesignWidth, roomDesignHeight),
+        ),
+        isTrue,
+      );
+      expect(placement.figmaRect.width, greaterThan(0));
+      expect(placement.figmaRect.height, greaterThan(0));
+    }
+  });
+
+  test('support relationships reference retained anchors', () {
+    final mainIds = decorationCatalog.map((item) => item.id).toSet();
+    final entries = <({String id, String? supportId})>[
+      for (final item in decorationCatalog)
+        (id: item.id, supportId: item.placement.supportItemId),
+      for (final item in dailyDecorationCatalog)
+        (id: item.id, supportId: item.placement.supportItemId),
+    ];
+    for (final entry in entries) {
+      final supportId = entry.supportId;
       if (supportId != null) {
-        expect(
-          decorationCatalog.any((mainItem) => mainItem.id == supportId),
-          isTrue,
-          reason: '${item.id} must reference a real main-room support.',
-        );
+        expect(mainIds, contains(supportId), reason: entry.id);
       }
     }
+  });
+
+  test('desk group keeps the exact Figma front-to-back order', () {
+    final desk = decorationCatalog
+        .firstWhere((item) => item.id == 'desk')
+        .placement;
+    final chair = decorationCatalog
+        .firstWhere((item) => item.id == 'chair')
+        .placement;
+    final candle = decorationCatalog
+        .firstWhere((item) => item.id == 'candle')
+        .placement;
+    final tea = dailyDecorationCatalog
+        .firstWhere((item) => item.id == 'tea_cup')
+        .placement;
+
+    final rug = decorationCatalog
+        .firstWhere((item) => item.id == 'rug')
+        .placement;
+    expect(rug.figmaLayerOrder, greaterThan(chair.figmaLayerOrder));
+    expect(chair.figmaLayerOrder, greaterThan(desk.figmaLayerOrder));
+    expect(candle.figmaLayerOrder, lessThan(desk.figmaLayerOrder));
+    expect(tea.figmaLayerOrder, lessThan(desk.figmaLayerOrder));
+    expect(candle.figmaRect, const ui.Rect.fromLTWH(127, 869, 142, 194));
+    expect(tea.figmaRect, const ui.Rect.fromLTWH(475, 1015, 117, 95));
+  });
+
+  test('image_1 remains the locked full-room background', () {
+    final row = File(
+      'design/figma_room_layout/figma_measurements.csv',
+    ).readAsLinesSync().firstWhere((line) => line.startsWith('image_1,'));
+    expect(row, 'image_1,-1,0,899,1748,13,locked background');
   });
 
   test(
-    'empty room background exists at portrait production resolution',
+    'individual room sprites exist and preserve transparent corners',
     () async {
-      final bytes = await File(AppAssets.emptyRoomBaseV2).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-
-      expect(frame.image.width, 899);
-      expect(frame.image.height, 1748);
-
-      frame.image.dispose();
-      codec.dispose();
+      final paths = {
+        ...decorationCatalog.map((item) => item.assetPath),
+        ...dailyDecorationCatalog.map((item) => item.assetPath),
+      };
+      expect(paths, hasLength(12));
+      for (final path in paths) {
+        final file = File(path);
+        expect(file.existsSync(), isTrue, reason: path);
+        final codec = await ui.instantiateImageCodec(await file.readAsBytes());
+        final frame = await codec.getNextFrame();
+        final pixels = await frame.image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        expect(pixels, isNotNull, reason: path);
+        expect(pixels!.getUint8(3), 0, reason: path);
+        frame.image.dispose();
+        codec.dispose();
+      }
     },
   );
+
+  test('empty room background matches the Figma canvas', () async {
+    final bytes = await File(AppAssets.emptyRoomBaseV2).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    expect(frame.image.width, roomDesignWidth);
+    expect(frame.image.height, roomDesignHeight);
+    frame.image.dispose();
+    codec.dispose();
+  });
 }

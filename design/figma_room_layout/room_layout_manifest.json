@@ -1,30 +1,20 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "coordinateSystem": "figma_top_left_pixels",
-  "canvas": {
-    "id": "cozy_focus_room_899x1748",
-    "width": 899,
-    "height": 1748,
-    "background": "background/empty_room_base_v2.png"
-  },
+  "layerOrder": "1_is_frontmost",
+  "canvas": {"id":"cozy_focus_room_899x1748","width":899,"height":1748,"background":"background/empty_room_base_v2.png"},
   "items": [
-    {"id":"rug","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorFoundation","asset":"items/rug.png","naturalSize":{"width":299,"height":238},"figma":null},
-    {"id":"night_fern","collection":"gentle_goal","role":"anchor","parentId":null,"slotType":"floor","layer":"floorBack","asset":"items/night_fern.png","naturalSize":{"width":262,"height":277},"figma":null},
-    {"id":"starflower","collection":"gentle_goal","role":"anchor","parentId":null,"slotType":"floor","layer":"floorBack","asset":"items/starflower.png","naturalSize":{"width":202,"height":276},"figma":null},
-    {"id":"bookshelf","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorBack","asset":"items/bookshelf.png","naturalSize":{"width":284,"height":268},"figma":null},
-    {"id":"desk","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorMiddle","asset":"items/desk.png","naturalSize":{"width":299,"height":308},"figma":null},
-    {"id":"potted_plant","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorMiddle","asset":"items/potted_plant.png","naturalSize":{"width":200,"height":291},"figma":null},
-    {"id":"chair","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorFront","asset":"items/chair.png","naturalSize":{"width":325,"height":321},"figma":null},
-    {"id":"sleeping_cat","collection":"main","role":"sub-item","parentId":"rug","slotType":"floor","layer":"floorFront","asset":"items/sleeping_cat.png","naturalSize":{"width":322,"height":262},"figma":null},
-    {"id":"wall_art","collection":"main","role":"anchor","parentId":null,"slotType":"wall","layer":"wall","asset":"items/wall_art.png","naturalSize":{"width":210,"height":278},"figma":null},
-    {"id":"hanging_plant","collection":"main","role":"anchor","parentId":null,"slotType":"ceiling","layer":"wall","asset":"items/hanging_plant.png","naturalSize":{"width":202,"height":315},"figma":null},
-    {"id":"desk_lamp","collection":"main","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/desk_lamp.png","naturalSize":{"width":206,"height":320},"figma":null},
-    {"id":"candle","collection":"main","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/candle.png","naturalSize":{"width":216,"height":294},"figma":null},
-    {"id":"tea_cup","collection":"gentle_goal","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/tea_cup.png","naturalSize":{"width":262,"height":212},"figma":null},
-    {"id":"desk_clock","collection":"gentle_goal","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/desk_clock.png","naturalSize":{"width":204,"height":220},"figma":null},
-    {"id":"book_stack","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"tabletop","asset":"items/book_stack.png","naturalSize":{"width":258,"height":236},"figma":null},
-    {"id":"tiny_vase","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"tabletop","asset":"items/tiny_vase.png","naturalSize":{"width":142,"height":272},"figma":null},
-    {"id":"owl_figure","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"tabletop","asset":"items/owl_figure.png","naturalSize":{"width":184,"height":240},"figma":null},
-    {"id":"leaf_lantern","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"light","asset":"items/leaf_lantern.png","naturalSize":{"width":170,"height":278},"figma":null}
+    {"id":"rug","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorFoundation","asset":"items/rug.png","naturalSize":{"width":299,"height":238},"figma":{"x":-23,"y":996,"width":944,"height":752,"layerOrder":11,"rotation":0}},
+    {"id":"night_fern","collection":"gentle_goal","role":"anchor","parentId":null,"slotType":"floor","layer":"floorBack","asset":"items/night_fern.png","naturalSize":{"width":262,"height":277},"figma":{"x":90,"y":547,"width":262,"height":277,"layerOrder":6,"rotation":0}},
+    {"id":"bookshelf","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorBack","asset":"items/bookshelf.png","naturalSize":{"width":284,"height":268},"figma":{"x":475,"y":487,"width":420,"height":397,"layerOrder":12,"rotation":0}},
+    {"id":"desk","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorMiddle","asset":"items/desk.png","naturalSize":{"width":299,"height":308},"figma":{"x":90,"y":884,"width":631,"height":650,"layerOrder":9,"rotation":0}},
+    {"id":"chair","collection":"main","role":"anchor","parentId":null,"slotType":"floor","layer":"floorFront","asset":"items/chair.png","naturalSize":{"width":325,"height":321},"figma":{"x":127,"y":845,"width":650,"height":642,"layerOrder":10,"rotation":0}},
+    {"id":"sleeping_cat","collection":"main","role":"sub-item","parentId":"rug","slotType":"floor","layer":"floorFront","asset":"items/sleeping_cat.png","naturalSize":{"width":322,"height":262},"figma":{"x":154,"y":1427,"width":321,"height":261,"layerOrder":3,"rotation":0}},
+    {"id":"wall_art","collection":"main","role":"anchor","parentId":null,"slotType":"wall","layer":"wall","asset":"items/wall_art.png","naturalSize":{"width":210,"height":278},"figma":{"x":685,"y":65,"width":210,"height":278,"layerOrder":1,"rotation":0}},
+    {"id":"hanging_plant","collection":"main","role":"anchor","parentId":null,"slotType":"ceiling","layer":"wall","asset":"items/hanging_plant.png","naturalSize":{"width":202,"height":315},"figma":{"x":120,"y":120,"width":202,"height":315,"layerOrder":8,"rotation":0}},
+    {"id":"candle","collection":"main","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/candle.png","naturalSize":{"width":216,"height":294},"figma":{"x":127,"y":869,"width":142,"height":194,"layerOrder":4,"rotation":0}},
+    {"id":"tea_cup","collection":"gentle_goal","role":"sub-item","parentId":"desk","slotType":"tabletop","layer":"tabletop","asset":"items/tea_cup.png","naturalSize":{"width":262,"height":212},"figma":{"x":475,"y":1015,"width":117,"height":95,"layerOrder":2,"rotation":0}},
+    {"id":"owl_figure","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"tabletop","asset":"items/owl_figure.png","naturalSize":{"width":184,"height":240},"figma":{"x":558,"y":389,"width":103,"height":134,"layerOrder":5,"rotation":0}},
+    {"id":"leaf_lantern","collection":"gentle_goal","role":"sub-item","parentId":"bookshelf","slotType":"tabletop","layer":"light","asset":"items/leaf_lantern.png","naturalSize":{"width":170,"height":278},"figma":{"x":687,"y":343,"width":112,"height":183,"layerOrder":7,"rotation":0}}
   ]
 }

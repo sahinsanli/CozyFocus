@@ -172,7 +172,7 @@ void main() {
 
     await controller.recordCompletedSession(70);
     expect(controller.inventoryStatus('chair'), InventoryStatus.pendingClaim);
-    expect(controller.currentCraftItem?.id, 'desk_lamp');
+    expect(controller.currentCraftItem?.id, 'rug');
     expect(controller.craftProgress.accumulatedMinutes, 10);
     expect(controller.pendingRewards.map((reward) => reward.itemId), [
       'desk',
@@ -376,45 +376,42 @@ void main() {
     },
   );
 
-  test('fixed tabletop home and interactive light state persist', () async {
+  test('fixed tabletop home and interactive candle state persist', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
 
-    await controller.recordCompletedSession(180);
-    await controller.claimNextReward(place: false);
-    await controller.claimNextReward(place: false);
-    await controller.claimNextReward(place: false);
-    await controller.toggleDecoration('desk_lamp');
-    await controller.toggleRoomItemInteraction('desk_lamp');
+    await controller.recordCompletedSession(675);
+    for (var i = 0; i < 5; i++) {
+      await controller.claimNextReward(place: false);
+    }
+    await controller.toggleDecoration('candle');
+    await controller.toggleRoomItemInteraction('candle');
 
     final restored = AppController(preferences);
     await restored.restore();
 
-    expect(restored.roomPlacements['desk_lamp']?.slotId, 'lamp_on_desk');
-    expect(restored.selectedDecorationIds, containsAll(['desk', 'desk_lamp']));
-    expect(restored.isRoomItemActive('desk_lamp'), isTrue);
+    expect(restored.roomPlacements['candle']?.slotId, 'candle_on_desk');
+    expect(restored.selectedDecorationIds, containsAll(['desk', 'candle']));
+    expect(restored.isRoomItemActive('candle'), isTrue);
   });
 
   test('storing a support item also stores its placed dependents', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
 
-    await controller.recordCompletedSession(180);
-    await controller.claimNextReward(place: false);
-    await controller.claimNextReward(place: false);
-    await controller.claimNextReward(place: false);
-    await controller.toggleDecoration('desk_lamp');
-    expect(
-      controller.selectedDecorationIds,
-      containsAll(['desk', 'desk_lamp']),
-    );
+    await controller.recordCompletedSession(675);
+    for (var i = 0; i < 5; i++) {
+      await controller.claimNextReward(place: false);
+    }
+    await controller.toggleDecoration('candle');
+    expect(controller.selectedDecorationIds, containsAll(['desk', 'candle']));
 
     await controller.toggleDecoration('desk');
 
     expect(controller.selectedDecorationIds, isNot(contains('desk')));
-    expect(controller.selectedDecorationIds, isNot(contains('desk_lamp')));
+    expect(controller.selectedDecorationIds, isNot(contains('candle')));
     expect(controller.inventoryStatus('desk'), InventoryStatus.owned);
-    expect(controller.inventoryStatus('desk_lamp'), InventoryStatus.owned);
+    expect(controller.inventoryStatus('candle'), InventoryStatus.owned);
   });
 }
 

@@ -82,9 +82,7 @@ export_item() {
 # columns, rows, column, row.
 export_item desk "$main_atlas" 4 3 0 0
 export_item chair "$main_atlas" 4 3 1 0
-export_item desk_lamp "$main_atlas" 4 3 2 0
 export_item rug "$main_atlas" 4 3 3 0
-export_item potted_plant "$reward_atlas" 4 4 0 2
 export_item bookshelf "$main_atlas" 4 3 1 1
 export_item candle "$main_atlas" 4 3 2 1
 export_item wall_art "$main_atlas" 4 3 3 1
@@ -93,12 +91,8 @@ export_item sleeping_cat "$main_atlas" 4 3 1 2
 
 # Gentle Goal Box collection items.
 export_item tea_cup "$reward_atlas" 4 4 0 0
-export_item book_stack "$reward_atlas" 4 4 1 0
-export_item tiny_vase "$reward_atlas" 4 4 2 0
-export_item starflower "$reward_atlas" 4 4 3 0
 export_item night_fern "$reward_atlas" 4 4 0 1
 export_item owl_figure "$reward_atlas" 4 4 1 1
 export_item leaf_lantern "$reward_atlas" 4 4 2 1
-export_item desk_clock "$reward_atlas" 4 4 3 1
 
 echo "Figma room kit exported to: $kit_dir"

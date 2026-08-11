@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cozy Focus Room - Onboarding 3</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#4f6144",
+                        "surface-container": "#faebe5",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#3a4c31",
+                        "background": "#fff8f6",
+                        "surface-container-low": "#fff1eb",
+                        "outline-variant": "#c4c8bd",
+                        "surface-dim": "#e5d7d2",
+                        "on-surface": "#211a17",
+                        "tertiary-fixed": "#ebe2cd",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#677a5c",
+                        "outline": "#74786f",
+                        "on-tertiary-fixed-variant": "#4c4637",
+                        "secondary-container": "#fd978c",
+                        "surface-container-highest": "#eee0da",
+                        "secondary": "#97463e",
+                        "on-secondary-fixed": "#3e0404",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#444840",
+                        "primary-fixed-dim": "#b8cdaa",
+                        "inverse-surface": "#372f2b",
+                        "inverse-primary": "#b8cdaa",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#625b4b",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#fdeee8",
+                        "surface": "#fff8f6",
+                        "on-primary-container": "#f8ffee",
+                        "surface-tint": "#516447",
+                        "surface-container-high": "#f4e5e0",
+                        "surface-bright": "#fff8f6",
+                        "on-secondary-container": "#772e27",
+                        "tertiary-container": "#7b7463",
+                        "on-tertiary-fixed": "#1f1b0f",
+                        "on-primary-fixed": "#0f1f09",
+                        "on-error": "#ffffff",
+                        "on-background": "#211a17",
+                        "primary-fixed": "#d4e9c4",
+                        "secondary-fixed-dim": "#ffb4ab",
+                        "tertiary-fixed-dim": "#cfc6b2",
+                        "on-secondary-fixed-variant": "#792f28",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#eee0da",
+                        "secondary-fixed": "#ffdad6",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "unit": "8px",
+                        "container-padding-mobile": "20px",
+                        "stack-gap": "12px",
+                        "section-gap": "48px",
+                        "container-padding-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Quicksand"],
+                        "headline-lg": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "body-lg": ["Nunito Sans"],
+                        "display-lg": ["Quicksand"],
+                        "body-md": ["Nunito Sans"],
+                        "label-md": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+
+        .blob-bg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120vw;
+            height: 120vh;
+            background: radial-gradient(circle, theme('colors.surface-container-high') 0%, theme('colors.background') 70%);
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(196, 200, 189, 0.2);
+            box-shadow: 0 10px 30px rgba(98, 88, 84, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-body-md">
+<div class="blob-bg"></div>
+<main class="w-full max-w-md mx-auto h-[100dvh] md:h-auto md:min-h-[800px] flex flex-col justify-between p-container-padding-mobile md:p-container-padding-desktop relative z-10 md:glass-card md:rounded-[40px] md:my-section-gap">
+<div class="flex-1 flex flex-col justify-center mt-12 md:mt-0">
+<!-- Illustration Area -->
+<div class="w-full aspect-square mb-8 relative rounded-full overflow-hidden glass-card">
+<img class="object-cover w-full h-full mix-blend-multiply opacity-90" data-alt="A soft, hand-drawn digital illustration of a fully decorated, cozy room. The aesthetic is digital hygge and soft minimalism. The color palette features warm creams, terracotta accents, and soft sage greens. The room includes lush potted plants, comfortable wooden and upholstered furniture, and a tranquil window view. A fluffy cat is peacefully sleeping on a textured rug in the center. The lighting is soft, natural, and inviting, creating a calming, low-stress environment perfect for focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKGv24izZOzLyut_HUC1JSkAGD9Wdg6xRY4fOUnybItwmLQs0se8JgPHijhBKrHeXGfcetaWlfqPheMvFXme4zP_9Y87sHT7-oxNNu2lqOHWN3YdHbxf06uhvlicKIqAXsbWQtI_EsvTq2EOdXFJmJOaOFjQbHX4u1XeyzcDkFY25uDLflcVPDLokX0rcRlorKbApFO22kK2fbYRbgVr2VPgX-PpLXtxV6Kpg3dqMc8izhbYfHjmn_"/>
+</div>
+<!-- Content Area -->
+<div class="text-center space-y-4 px-4">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary tracking-tight">Your Personal Sanctuary</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Make it yours. Customize your room with plants, furniture, and calming sounds. Ready to start your journey?</p>
+</div>
+</div>
+<!-- Navigation & Actions -->
+<div class="w-full flex flex-col items-center gap-8 pb-8 pt-4">
+<!-- Dot Indicators -->
+<div class="flex gap-2">
+<div class="w-2 h-2 rounded-full bg-outline-variant/40"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/40"></div>
+<div class="w-8 h-2 rounded-full bg-primary transition-all duration-300"></div>
+</div>
+<!-- CTA Button -->
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md py-4 px-8 rounded-full transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+<span>Get Started</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</main>
+</body></html>

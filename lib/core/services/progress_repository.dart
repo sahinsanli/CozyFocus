@@ -12,16 +12,36 @@ abstract interface class ProgressRepository {
 }
 
 class SharedPreferencesProgressRepository implements ProgressRepository {
-  SharedPreferencesProgressRepository(this._preferences);
+  SharedPreferencesProgressRepository(
+    this._preferences, {
+    this.storageNamespace,
+    this.migrateGlobalProgress = false,
+  });
 
   static const storageKey = 'app_progress_v2';
   static const corruptBackupPrefix = 'app_progress_v2_corrupt_';
+  static const migrationOwnerKey = 'app_progress_v2_migration_owner';
 
   final SharedPreferences _preferences;
+  final String? storageNamespace;
+  final bool migrateGlobalProgress;
+
+  String get resolvedStorageKey =>
+      storageNamespace == null ? storageKey : '${storageKey}_$storageNamespace';
 
   @override
   Future<AppProgressV2> load() async {
-    final stored = _preferences.getString(storageKey);
+    var stored = _preferences.getString(resolvedStorageKey);
+    if (stored == null &&
+        migrateGlobalProgress &&
+        storageNamespace != null &&
+        _preferences.getString(migrationOwnerKey) == null) {
+      stored = _preferences.getString(storageKey);
+      if (stored != null) {
+        await _preferences.setString(resolvedStorageKey, stored);
+        await _preferences.setString(migrationOwnerKey, storageNamespace!);
+      }
+    }
     if (stored != null) {
       try {
         return AppProgressV2.fromJson(
@@ -29,7 +49,8 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
         );
       } catch (_) {
         await _preferences.setString(
-          '$corruptBackupPrefix${DateTime.now().millisecondsSinceEpoch}',
+          '$corruptBackupPrefix${storageNamespace ?? 'global'}_'
+          '${DateTime.now().millisecondsSinceEpoch}',
           stored,
         );
       }
@@ -42,7 +63,44 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
 
   @override
   Future<void> save(AppProgressV2 progress) async {
-    await _preferences.setString(storageKey, jsonEncode(progress.toJson()));
+    await _preferences.setString(
+      resolvedStorageKey,
+      jsonEncode(progress.toJson()),
+    );
+  }
+
+  Future<void> clear() => _preferences.remove(resolvedStorageKey);
+
+  Future<void> clearMigrationSourceIfOwned() async {
+    if (storageNamespace == null ||
+        _preferences.getString(migrationOwnerKey) != storageNamespace) {
+      return;
+    }
+    const legacyKeys = {
+      storageKey,
+      'username',
+      'darkMode',
+      'focusReminders',
+      'autoStartBreaks',
+      'testMode',
+      'dailyGoalMinutes',
+      'defaultFocusMinutes',
+      'shortBreakMinutes',
+      'sleepTimerMinutes',
+      'dailyMinutes',
+      'selectedDecorations',
+      'decorationPositions',
+      'timerStatus',
+      'remainingSeconds',
+      'activeSessionMinutes',
+      'timerEndEpochMs',
+    };
+    for (final key in _preferences.getKeys()) {
+      if (legacyKeys.contains(key) || key.startsWith('volume_')) {
+        await _preferences.remove(key);
+      }
+    }
+    await _preferences.remove(migrationOwnerKey);
   }
 
   AppProgressV2 _migrateLegacy() {
@@ -110,7 +168,7 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
 
     return AppProgressV2(
       username: _preferences.getString('username') ?? 'Selin',
-      darkMode: _preferences.getBool('darkMode') ?? false,
+      darkMode: _preferences.getBool('darkMode') ?? true,
       focusReminders: _preferences.getBool('focusReminders') ?? true,
       autoStartBreaks: _preferences.getBool('autoStartBreaks') ?? false,
       testMode: _preferences.getBool('testMode') ?? true,

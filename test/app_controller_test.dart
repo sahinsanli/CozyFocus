@@ -51,7 +51,7 @@ void main() {
     expect(controller.testPreviewActive, isTrue);
     expect(controller.testElapsedMinutes, 10);
     expect(controller.timerStatus, FocusTimerStatus.paused);
-    expect(effects.played, contains(AppSoundEffect.woodCut));
+    expect(effects.played, isNot(contains(AppSoundEffect.woodCut)));
     expect(controller.allTimeMinutes, 0);
 
     await controller.completeTestFocus();
@@ -150,16 +150,38 @@ void main() {
     expect(effects.played, [AppSoundEffect.click, AppSoundEffect.puttingItem]);
   });
 
-  test('focus development maps upcoming item effects', () async {
+  test('only non-wood development effects play during focus', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
 
-    expect(controller.developmentSoundEffect, AppSoundEffect.woodCut);
-    await controller.recordCompletedSession(50);
-    expect(controller.developmentSoundEffect, AppSoundEffect.woodCut);
-    await controller.recordCompletedSession(70);
+    expect(controller.currentCraftItem?.id, 'desk');
     expect(controller.developmentSoundEffect, isNull);
+    await controller.recordCompletedSession(1320);
+    expect(controller.currentCraftItem?.id, 'sleeping_cat');
+    expect(controller.developmentSoundEffect, AppSoundEffect.catMeow);
   });
+
+  test(
+    'wood cut plays when furniture is earned, not while it develops',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final effects = _TrackingSoundEffectService();
+      final controller = AppController(
+        preferences,
+        soundEffectService: effects,
+      );
+
+      await controller.recordCompletedSession(10);
+      await Future<void>.delayed(Duration.zero);
+      expect(effects.played, isNot(contains(AppSoundEffect.woodCut)));
+
+      effects.played.clear();
+      await controller.recordCompletedSession(20);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.inventoryStatus('desk'), InventoryStatus.pendingClaim);
+      expect(effects.played, contains(AppSoundEffect.woodCut));
+    },
+  );
 
   test('focus minutes craft ordered items and carry excess forward', () async {
     final preferences = await SharedPreferences.getInstance();

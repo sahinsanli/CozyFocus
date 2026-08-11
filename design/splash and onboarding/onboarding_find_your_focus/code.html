@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cozy Focus Room - Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#4f6144",
+                      "surface-container": "#faebe5",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed-variant": "#3a4c31",
+                      "background": "#fff8f6",
+                      "surface-container-low": "#fff1eb",
+                      "outline-variant": "#c4c8bd",
+                      "surface-dim": "#e5d7d2",
+                      "on-surface": "#211a17",
+                      "tertiary-fixed": "#ebe2cd",
+                      "on-primary": "#ffffff",
+                      "primary-container": "#677a5c",
+                      "outline": "#74786f",
+                      "on-tertiary-fixed-variant": "#4c4637",
+                      "secondary-container": "#fd978c",
+                      "surface-container-highest": "#eee0da",
+                      "secondary": "#97463e",
+                      "on-secondary-fixed": "#3e0404",
+                      "on-tertiary": "#ffffff",
+                      "on-surface-variant": "#444840",
+                      "primary-fixed-dim": "#b8cdaa",
+                      "inverse-surface": "#372f2b",
+                      "inverse-primary": "#b8cdaa",
+                      "error-container": "#ffdad6",
+                      "tertiary": "#625b4b",
+                      "on-secondary": "#ffffff",
+                      "inverse-on-surface": "#fdeee8",
+                      "surface": "#fff8f6",
+                      "on-primary-container": "#f8ffee",
+                      "surface-tint": "#516447",
+                      "surface-container-high": "#f4e5e0",
+                      "surface-bright": "#fff8f6",
+                      "on-secondary-container": "#772e27",
+                      "tertiary-container": "#7b7463",
+                      "on-tertiary-fixed": "#1f1b0f",
+                      "on-primary-fixed": "#0f1f09",
+                      "on-error": "#ffffff",
+                      "on-background": "#211a17",
+                      "primary-fixed": "#d4e9c4",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "tertiary-fixed-dim": "#cfc6b2",
+                      "on-secondary-fixed-variant": "#792f28",
+                      "error": "#ba1a1a",
+                      "surface-variant": "#eee0da",
+                      "secondary-fixed": "#ffdad6",
+                      "on-tertiary-container": "#fffbff",
+                      "surface-container-lowest": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "unit": "8px",
+                      "container-padding-mobile": "20px",
+                      "stack-gap": "12px",
+                      "section-gap": "48px",
+                      "container-padding-desktop": "40px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Quicksand"
+                      ],
+                      "headline-lg": [
+                              "Quicksand"
+                      ],
+                      "headline-lg-mobile": [
+                              "Quicksand"
+                      ],
+                      "body-lg": [
+                              "Nunito Sans"
+                      ],
+                      "display-lg": [
+                              "Quicksand"
+                      ],
+                      "body-md": [
+                              "Nunito Sans"
+                      ],
+                      "label-md": [
+                              "Nunito Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background h-full flex flex-col items-center justify-center font-body-md">
+<!-- Main Container -->
+<main class="w-full max-w-md mx-auto px-container-padding-mobile flex flex-col h-full md:justify-center md:h-auto md:min-h-[80vh]">
+<!-- Illustration Area -->
+<div class="flex-grow flex items-center justify-center w-full mt-12 md:mt-0 relative">
+<div class="relative w-full aspect-square max-w-[320px] rounded-[48px] bg-white/60 backdrop-blur-xl flex items-center justify-center p-8 shadow-[0_10px_30px_rgba(98,88,84,0.08)] border border-outline-variant/20">
+<img class="w-full h-full object-contain drop-shadow-sm opacity-90" data-alt="A soft, lo-fi, hand-drawn illustration of a peaceful study area. The scene features a delicate tea cup on a saucer next to an open book with softly curling pages. Warm cream and sage green tones dominate. The aesthetic is digital hygge, cozy indie gaming style, with very light, diffused shading and organic, imperfect linework on a transparent or pure white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1kc9EKZHb8yd5aksJWF64nkHYx0A4Z8Avno9cS_wdY6iW4Q7niV7FhfW5CXI1U6P1cjU32VQ2sxJZTgkE6Mfj6pwUhI_C_a3b4R0zXzwXZaAcYiML6al2U1L2aHaVvSgNzrjcpfsQJ9ZMvFxJD77R8sZPhfrtw_uN_3xAQDSIaJpdEzvRGb1KAozkfhJn8QSEVJNbVBzy_v2A4-rM9OTEkaMB_w0M5n31mLPWnNaEa7JVIy0Fif9L"/>
+</div>
+</div>
+<!-- Content Area -->
+<div class="flex flex-col items-center text-center mt-section-gap mb-12 px-4 md:px-0">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-background mb-4 text-balance">Find Your Focus</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-sm text-balance">
+                Create a dedicated space for deep work and mindfulness. Choose your time and let the world fade away.
+            </p>
+</div>
+<!-- Navigation & Controls -->
+<div class="flex flex-col items-center justify-center pb-8 mt-auto w-full gap-8">
+<!-- Indicators -->
+<div class="flex space-x-3 items-center">
+<div class="w-8 h-2 rounded-full bg-primary shadow-sm"></div>
+<div class="w-2 h-2 rounded-full bg-surface-variant transition-colors hover:bg-surface-variant/80 cursor-pointer"></div>
+<div class="w-2 h-2 rounded-full bg-surface-variant transition-colors hover:bg-surface-variant/80 cursor-pointer"></div>
+</div>
+<!-- Next Button -->
+<button class="w-full max-w-[280px] bg-primary text-on-primary font-label-md text-label-md py-4 px-8 rounded-full shadow-[0_10px_30px_rgba(79,97,68,0.2)] hover:bg-primary/90 active:scale-95 transition-all duration-200 ease-out flex items-center justify-center gap-2">
+                Next
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span>
+</button>
+</div>
+</main>
+</body></html>

@@ -12,6 +12,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../settings/settings_screen.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -154,6 +155,10 @@ class FocusScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                 ],
+                if (!controller.hasCloudAccount) ...[
+                  _AccountProtectionCard(controller: controller),
+                  const SizedBox(height: 14),
+                ],
                 CozyCard(
                   child: Row(
                     children: [
@@ -222,6 +227,77 @@ class FocusScreen extends StatelessWidget {
     FocusTimerStatus.paused => 'Resume',
     _ => 'Start focus',
   };
+}
+
+class _AccountProtectionCard extends StatelessWidget {
+  const _AccountProtectionCard({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return CozyCard(
+      key: const Key('focus-account-prompt'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: .14),
+                ),
+                child: Icon(
+                  Icons.cloud_upload_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Keep your progress safe',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Guest progress stays on this device. Sign in to keep your focus history, rewards, and room after a reinstall or device change.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            key: const Key('focus-open-account'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const AccountScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            label: Text(
+              controller.accountFeaturesAvailable
+                  ? 'Protect my progress'
+                  : 'Open account settings',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CraftPreview extends StatelessWidget {

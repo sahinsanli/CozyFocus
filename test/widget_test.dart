@@ -11,6 +11,86 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('first launch shows splash and completes all onboarding pages', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(402, 874));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    var completed = false;
+
+    await tester.pumpWidget(
+      CozyFocusApp(
+        controller: controller,
+        showLaunchExperience: true,
+        onboardingCompleted: false,
+        onOnboardingComplete: () async => completed = true,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Cozy Focus\nRoom'), findsOneWidget);
+    expect(find.text('Your peaceful space to grow.'), findsOneWidget);
+    final illustrationSize = tester.getSize(
+      find.byKey(const Key('splash-illustration')),
+    );
+    final illustrationCenter = tester.getCenter(
+      find.byKey(const Key('splash-illustration')),
+    );
+    expect(
+      illustrationSize.width / illustrationSize.height,
+      closeTo(900 / 1748, .01),
+    );
+    expect(illustrationCenter.dx, closeTo(201, .01));
+    expect(
+      Theme.of(tester.element(find.byType(Scaffold))).brightness,
+      Brightness.dark,
+    );
+
+    await tester.tap(find.byKey(const Key('splash-begin')));
+    await tester.pumpAndSettle();
+    expect(find.text('Find Your Focus'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Watch Your Progress Grow'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Your Personal Sanctuary'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(completed, isTrue);
+    expect(find.text('Ready to focus?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('returning users leave the splash directly for the home screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await tester.pumpWidget(
+      CozyFocusApp(
+        controller: controller,
+        showLaunchExperience: true,
+        onboardingCompleted: true,
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('splash-begin')));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('Ready to focus?'), findsOneWidget);
+    expect(find.text('Find Your Focus'), findsNothing);
+  });
+
   testWidgets('main navigation retains all four core destinations', (
     tester,
   ) async {
@@ -40,6 +120,30 @@ void main() {
     await tester.tap(find.text('Sounds'));
     await tester.pumpAndSettle();
     expect(find.text('Rainy Night'), findsOneWidget);
+  });
+
+  testWidgets('guest focus prompt opens the account and sync screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    final prompt = find.byKey(const Key('focus-account-prompt'));
+    expect(prompt, findsOneWidget);
+    await tester.ensureVisible(prompt);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('focus-open-account')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Account & Sync'), findsOneWidget);
+    expect(find.text('Keep your progress safe'), findsOneWidget);
+    expect(
+      find.textContaining('Account services are temporarily unavailable'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('profile and settings are reachable from the app bar', (

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show Offset;
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,7 +9,9 @@ import '../models/decoration_item.dart';
 import '../models/app_progress.dart';
 import '../models/badge_definition.dart';
 import '../models/sound_item.dart';
+import 'account_service.dart';
 import 'audio_service.dart';
+import 'firebase_progress_repository.dart';
 import 'progress_repository.dart';
 import 'sound_effect_service.dart';
 
@@ -22,24 +25,31 @@ class AppController extends ChangeNotifier {
     AudioService? audioService,
     ProgressRepository? progressRepository,
     SoundEffectService? soundEffectService,
+    AccountService? accountService,
   }) : _audioService = audioService ?? MockAudioService(),
        _progressRepository =
            progressRepository ??
            SharedPreferencesProgressRepository(preferences),
        _soundEffectService = soundEffectService ?? MockSoundEffectService() {
+    _accountService = accountService;
     _initializeProductionState();
   }
 
   final AudioService _audioService;
   final ProgressRepository _progressRepository;
   final SoundEffectService _soundEffectService;
+  late final AccountService? _accountService;
   Timer? _ticker;
   int? _timerEndEpochMs;
   Timer? _sleepTimerTicker;
   int? _sleepTimerEndEpochMs;
+  String? _activeSessionId;
+
+  bool accountBusy = false;
+  String? accountError;
 
   String username = 'Selin';
-  bool darkMode = false;
+  bool darkMode = true;
   bool focusReminders = true;
   bool autoStartBreaks = false;
   bool testMode = true;
@@ -91,6 +101,20 @@ class AppController extends ChangeNotifier {
   bool sleepTimerJustFinished = false;
 
   bool get isBreakSession => timerSessionKind == TimerSessionKind.shortBreak;
+
+  CozyAccount? get account => _accountService?.currentAccount;
+  bool get accountFeaturesAvailable => _accountService != null;
+  bool get hasCloudAccount => account != null && !(account?.isGuest ?? true);
+  CloudSyncState get cloudSyncState =>
+      _progressRepository is AccountProgressRepository
+      ? (_progressRepository as AccountProgressRepository).syncState
+      : CloudSyncState.localOnly;
+  DateTime? get lastSyncedAt => _progressRepository is AccountProgressRepository
+      ? (_progressRepository as AccountProgressRepository).lastSyncedAt
+      : null;
+  String? get cloudSyncError => _progressRepository is AccountProgressRepository
+      ? (_progressRepository as AccountProgressRepository).syncError
+      : null;
 
   int get activeSoundCount =>
       soundVolumes.values.where((volume) => volume > 0).length;
@@ -253,6 +277,7 @@ class AppController extends ChangeNotifier {
     activeSessionMinutes = progress.timer.activeSessionMinutes;
     remainingSeconds = progress.timer.remainingSeconds;
     _timerEndEpochMs = progress.timer.endEpochMs;
+    _activeSessionId = progress.timer.sessionId;
     timerSessionKind =
         TimerSessionKind.values
             .where((kind) => kind.name == progress.timer.sessionKind)
@@ -385,6 +410,7 @@ class AppController extends ChangeNotifier {
           remainingSeconds = activeSessionMinutes * 60;
         }
         timerStatus = FocusTimerStatus.running;
+        _activeSessionId = _newSessionId();
         _startTicker();
       case FocusTimerStatus.running:
         _ticker?.cancel();
@@ -403,6 +429,7 @@ class AppController extends ChangeNotifier {
     activeSessionMinutes = defaultFocusMinutes;
     remainingSeconds = defaultFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
+    _activeSessionId = null;
     showCelebration = false;
     testPreviewActive = false;
     await _persistTimer();
@@ -435,6 +462,7 @@ class AppController extends ChangeNotifier {
     activeSessionMinutes = shortBreakMinutes;
     remainingSeconds = shortBreakMinutes * 60;
     timerStatus = FocusTimerStatus.running;
+    _activeSessionId = null;
     _startTicker();
     await _persistTimer();
     notifyListeners();
@@ -479,6 +507,8 @@ class AppController extends ChangeNotifier {
   Future<void> _completeSession({bool recordProgress = true}) async {
     _ticker?.cancel();
     final minutes = activeSessionMinutes;
+    final completedAt = DateTime.now();
+    final completedSessionId = _activeSessionId ?? _newSessionId();
     if (recordProgress) {
       final key = _dateKey(DateTime.now());
       final previousToday = _dailyMinutes[key] ?? 0;
@@ -504,7 +534,16 @@ class AppController extends ChangeNotifier {
       timerStatus = FocusTimerStatus.running;
       _startTicker();
     }
+    _activeSessionId = null;
     await _persistTimer();
+    if (recordProgress && _progressRepository is AccountProgressRepository) {
+      await (_progressRepository as AccountProgressRepository)
+          .recordFocusSession(
+            id: completedSessionId,
+            minutes: minutes,
+            completedAt: completedAt,
+          );
+    }
     notifyListeners();
   }
 
@@ -514,6 +553,7 @@ class AppController extends ChangeNotifier {
     activeSessionMinutes = defaultFocusMinutes;
     remainingSeconds = defaultFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
+    _activeSessionId = null;
     showCelebration = false;
     await _persistTimer();
     unawaited(_playEffect(AppSoundEffect.click));
@@ -533,6 +573,7 @@ class AppController extends ChangeNotifier {
       activeSessionMinutes = defaultFocusMinutes;
       remainingSeconds = activeSessionMinutes * 60;
       testPreviewActive = true;
+      _activeSessionId ??= _newSessionId();
     }
     final previousPreview = _craftPreview;
     remainingSeconds = (remainingSeconds - minutes * 60).clamp(
@@ -565,6 +606,7 @@ class AppController extends ChangeNotifier {
       activeSessionMinutes = defaultFocusMinutes;
       remainingSeconds = activeSessionMinutes * 60;
     }
+    _activeSessionId ??= _newSessionId();
     testPreviewActive = true;
     remainingSeconds = 0;
     await _completeSession();
@@ -791,9 +833,13 @@ class AppController extends ChangeNotifier {
 
   AppSoundEffect? _developmentEffectFor(DecorationItem item) {
     if (item.id == 'sleeping_cat') return AppSoundEffect.catMeow;
-    if (item.category == 'Furniture') return AppSoundEffect.woodCut;
     return null;
   }
+
+  AppSoundEffect _earnedEffectFor(DecorationItem item) =>
+      item.category == 'Furniture'
+      ? AppSoundEffect.woodCut
+      : AppSoundEffect.claimReward;
 
   Future<void> _playEffect(AppSoundEffect effect) async {
     try {
@@ -920,7 +966,7 @@ class AppController extends ChangeNotifier {
             ),
           );
         }
-        unawaited(_playEffect(AppSoundEffect.claimReward));
+        unawaited(_playEffect(_earnedEffectFor(item)));
         _selectNextCraftItem(carryover: available);
         if (currentCraftItem == null) break;
         craftProgress = CraftProgress(
@@ -1254,6 +1300,146 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> continueWithGoogle() => _runAccountTransition(
+    () => _accountService!.continueWithGoogle(),
+    mergeCurrentProgress: true,
+  );
+
+  Future<void> createEmailAccount(String email, String password) =>
+      _runAccountTransition(
+        () => _accountService!.createEmailAccount(email, password),
+        mergeCurrentProgress: true,
+      );
+
+  Future<void> signInWithEmail(String email, String password) =>
+      _runAccountTransition(
+        () => _accountService!.signInWithEmail(email, password),
+        mergeCurrentProgress: true,
+      );
+
+  Future<void> sendPasswordReset(String email) async {
+    final service = _accountService;
+    if (service == null || accountBusy) return;
+    accountBusy = true;
+    accountError = null;
+    notifyListeners();
+    try {
+      await service.sendPasswordReset(email);
+    } catch (error) {
+      accountError = _friendlyAccountError(error);
+      rethrow;
+    } finally {
+      accountBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> syncAccountNow() async {
+    if (_progressRepository is! AccountProgressRepository || accountBusy) {
+      return;
+    }
+    accountBusy = true;
+    accountError = null;
+    notifyListeners();
+    try {
+      await (_progressRepository as AccountProgressRepository)
+          .mergeIntoCurrentAccount(_progressSnapshot());
+      await restore();
+    } catch (error) {
+      accountError = _friendlyAccountError(error);
+    } finally {
+      accountBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOut() async {
+    final service = _accountService;
+    if (service == null || accountBusy) return;
+    accountBusy = true;
+    accountError = null;
+    notifyListeners();
+    try {
+      await service.signOutToGuest();
+      await restore();
+    } catch (error) {
+      accountError = _friendlyAccountError(error);
+    } finally {
+      accountBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteAccount({String? password}) async {
+    final service = _accountService;
+    if (service == null ||
+        _progressRepository is! AccountProgressRepository ||
+        accountBusy) {
+      return;
+    }
+    accountBusy = true;
+    accountError = null;
+    notifyListeners();
+    try {
+      await service.reauthenticate(password: password);
+      await (_progressRepository as AccountProgressRepository)
+          .deleteCurrentUserData();
+      await service.deleteCurrentAccount();
+      await service.ensureGuest();
+      await restore();
+    } catch (error) {
+      accountError = _friendlyAccountError(error);
+      rethrow;
+    } finally {
+      accountBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _runAccountTransition(
+    Future<CozyAccount> Function() action, {
+    required bool mergeCurrentProgress,
+  }) async {
+    if (_accountService == null || accountBusy) return;
+    accountBusy = true;
+    accountError = null;
+    final currentProgress = _progressSnapshot();
+    notifyListeners();
+    try {
+      await action();
+      if (mergeCurrentProgress &&
+          _progressRepository is AccountProgressRepository) {
+        await (_progressRepository as AccountProgressRepository)
+            .mergeIntoCurrentAccount(currentProgress);
+      }
+      await restore();
+    } catch (error) {
+      accountError = _friendlyAccountError(error);
+      rethrow;
+    } finally {
+      accountBusy = false;
+      notifyListeners();
+    }
+  }
+
+  static String _friendlyAccountError(Object error) {
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'invalid-credential' ||
+        'wrong-password' => 'The email or password is incorrect.',
+        'email-already-in-use' => 'An account already uses this email.',
+        'weak-password' => 'Use a password with at least 6 characters.',
+        'invalid-email' => 'Enter a valid email address.',
+        'too-many-requests' => 'Too many attempts. Please try again later.',
+        'network-request-failed' => 'Check your internet connection.',
+        'password-required' =>
+          error.message ?? 'Enter your password to continue.',
+        _ => error.message ?? 'The account action could not be completed.',
+      };
+    }
+    return 'The account action could not be completed. Please try again.';
+  }
+
   Future<void> setProfileAvatar(String avatarId) async {
     if (!profileAvatarCatalog.any((avatar) => avatar.id == avatarId)) return;
     profileAvatarId = avatarId;
@@ -1367,6 +1553,7 @@ class AppController extends ChangeNotifier {
       remainingSeconds: remainingSeconds,
       activeSessionMinutes: activeSessionMinutes,
       endEpochMs: _timerEndEpochMs,
+      sessionId: _activeSessionId,
     ),
     craftProgress: craftProgress,
     inventory: Map.unmodifiable(inventoryEntries),
@@ -1390,6 +1577,9 @@ class AppController extends ChangeNotifier {
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+
+  static String _newSessionId() =>
+      'focus-${DateTime.now().microsecondsSinceEpoch}';
 
   static String _currentDecorationId(String legacyId) => switch (legacyId) {
     'armchair' => 'chair',

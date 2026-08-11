@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, create, update, delete: if owns(uid);
+
+      match /state/{stateId} {
+        allow read, create, update, delete: if owns(uid)
+          && stateId == 'progress';
+      }
+
+      match /focusSessions/{sessionId} {
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid)
+          && request.resource.data.minutes is int
+          && request.resource.data.minutes > 0
+          && request.resource.data.minutes <= 1440
+          && request.resource.data.completedAt is timestamp;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

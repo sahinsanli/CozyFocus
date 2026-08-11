@@ -37,6 +37,12 @@ dependencies:
   shared_preferences: ^2.5.4
   just_audio: ^0.10.6
   audio_session: ^0.2.4
+  firebase_core: ^4.3.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  firebase_app_check: ^0.4.1+4
+  google_sign_in: ^7.2.0
+  url_launcher: ^6.3.2
 
 # path_provider_foundation 2.6.0 moved iOS path lookup to an Objective-C FFI
 # native asset. Its device slice can be reused by Xcode when switching to the

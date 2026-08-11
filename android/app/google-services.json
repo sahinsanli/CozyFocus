@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "463304727815",
+    "project_id": "cozyfocus-1ca80",
+    "storage_bucket": "cozyfocus-1ca80.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:463304727815:android:25312e9da99f26be28f9a2",
+        "android_client_info": {
+          "package_name": "com.sahinsanli.cozyfocus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "463304727815-4p0nedn293pl4ahmgfikbhvuu6rcss9m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sahinsanli.cozyfocus",
+            "certificate_hash": "ec175d4c67e9eea0e1019b747afba4d7daea825f"
+          }
+        },
+        {
+          "client_id": "463304727815-k30kuq3camkuf8kh5uueir490goo2130.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXAiGVjuXPdDB_N1GcyNG0kwULylOe098"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "463304727815-k30kuq3camkuf8kh5uueir490goo2130.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

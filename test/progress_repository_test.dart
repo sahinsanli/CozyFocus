@@ -186,4 +186,66 @@ void main() {
       returnsNormally,
     );
   });
+
+  test(
+    'account-scoped storage isolates users and migrates global once',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final global = SharedPreferencesProgressRepository(preferences);
+      await global.save(const AppProgressV2(username: 'Original guest'));
+
+      final firstUser = SharedPreferencesProgressRepository(
+        preferences,
+        storageNamespace: 'uid-a',
+        migrateGlobalProgress: true,
+      );
+      expect((await firstUser.load()).username, 'Original guest');
+      await firstUser.save(const AppProgressV2(username: 'Account A'));
+
+      final secondUser = SharedPreferencesProgressRepository(
+        preferences,
+        storageNamespace: 'uid-b',
+        migrateGlobalProgress: true,
+      );
+      expect((await secondUser.load()).username, 'Selin');
+      await secondUser.save(const AppProgressV2(username: 'Account B'));
+
+      expect((await firstUser.load()).username, 'Account A');
+      expect((await secondUser.load()).username, 'Account B');
+
+      await firstUser.clearMigrationSourceIfOwned();
+      expect(
+        preferences.getString(SharedPreferencesProgressRepository.storageKey),
+        isNull,
+      );
+      expect(
+        preferences.getString(
+          SharedPreferencesProgressRepository.migrationOwnerKey,
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'schema version two snapshots upgrade without losing progress',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final json = const AppProgressV2(
+        username: 'Version two user',
+        dailyMinutes: {'2026-08-10': 45},
+      ).toJson()..['schemaVersion'] = 2;
+      await preferences.setString(
+        SharedPreferencesProgressRepository.storageKey,
+        jsonEncode(json),
+      );
+
+      final restored = await SharedPreferencesProgressRepository(
+        preferences,
+      ).load();
+
+      expect(restored.username, 'Version two user');
+      expect(restored.dailyMinutes['2026-08-10'], 45);
+    },
+  );
 }

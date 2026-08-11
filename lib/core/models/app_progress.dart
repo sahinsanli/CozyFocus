@@ -234,6 +234,7 @@ class TimerSnapshot {
     this.remainingSeconds = 25 * 60,
     this.activeSessionMinutes = 25,
     this.endEpochMs,
+    this.sessionId,
   });
 
   final String status;
@@ -241,6 +242,7 @@ class TimerSnapshot {
   final int remainingSeconds;
   final int activeSessionMinutes;
   final int? endEpochMs;
+  final String? sessionId;
 
   Map<String, dynamic> toJson() => {
     'status': status,
@@ -248,6 +250,7 @@ class TimerSnapshot {
     'remainingSeconds': remainingSeconds,
     'activeSessionMinutes': activeSessionMinutes,
     'endEpochMs': endEpochMs,
+    'sessionId': sessionId,
   };
 
   factory TimerSnapshot.fromJson(Map<String, dynamic> json) => TimerSnapshot(
@@ -256,6 +259,7 @@ class TimerSnapshot {
     remainingSeconds: (json['remainingSeconds'] as num?)?.toInt() ?? 25 * 60,
     activeSessionMinutes: (json['activeSessionMinutes'] as num?)?.toInt() ?? 25,
     endEpochMs: (json['endEpochMs'] as num?)?.toInt(),
+    sessionId: json['sessionId'] as String?,
   );
 }
 
@@ -263,7 +267,7 @@ class AppProgressV2 {
   const AppProgressV2({
     this.username = 'Selin',
     this.profileAvatarId = 'moonleaf',
-    this.darkMode = false,
+    this.darkMode = true,
     this.focusReminders = true,
     this.autoStartBreaks = false,
     this.testMode = true,
@@ -284,7 +288,7 @@ class AppProgressV2 {
     this.dailyReward = const DailyRewardState(),
   });
 
-  static const schemaVersion = 2;
+  static const schemaVersion = 3;
 
   final String username;
   final String profileAvatarId;
@@ -341,14 +345,14 @@ class AppProgressV2 {
 
   factory AppProgressV2.fromJson(Map<String, dynamic> json) {
     final version = (json['schemaVersion'] as num?)?.toInt();
-    if (version != schemaVersion) {
+    if (version != 2 && version != schemaVersion) {
       throw FormatException('Unsupported progress schema: $version');
     }
     final settings = _stringMap(json['settings']);
     return AppProgressV2(
       username: json['username'] as String? ?? 'Selin',
       profileAvatarId: json['profileAvatarId'] as String? ?? 'moonleaf',
-      darkMode: settings['darkMode'] as bool? ?? false,
+      darkMode: settings['darkMode'] as bool? ?? true,
       focusReminders: settings['focusReminders'] as bool? ?? true,
       autoStartBreaks: settings['autoStartBreaks'] as bool? ?? false,
       testMode: settings['testMode'] as bool? ?? true,

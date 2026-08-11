@@ -8,6 +8,7 @@ import '../../core/models/sound_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../../l10n/localization_extensions.dart';
 
 class SoundsScreen extends StatelessWidget {
   const SoundsScreen({super.key});
@@ -27,7 +28,7 @@ class SoundsScreen extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Ambient\nSounds',
+                context.l10n.ambientSounds,
                 style: Theme.of(
                   context,
                 ).textTheme.displaySmall?.copyWith(fontSize: 48),
@@ -35,7 +36,7 @@ class SoundsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Mix your perfect background noise.',
+                context.l10n.soundsSubtitle,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -55,8 +56,11 @@ class SoundsScreen extends StatelessWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              controller.audioErrorMessage ??
-                                  '${sound.name} is coming soon.',
+                              controller.audioErrorKind != null
+                                  ? context.l10n.audioError(
+                                      controller.audioErrorKind,
+                                    )
+                                  : context.l10n.soundComingSoon(sound.name),
                             ),
                           ),
                         );
@@ -81,8 +85,10 @@ class SoundsScreen extends StatelessWidget {
                                 SnackBar(
                                   content: Text(
                                     activeCount == 0
-                                        ? 'Choose sounds to create a mix.'
-                                        : '$activeCount sounds are in your active mix.',
+                                        ? context.l10n.chooseSounds
+                                        : context.l10n.activeSounds(
+                                            activeCount,
+                                          ),
                                   ),
                                 ),
                               );
@@ -93,7 +99,7 @@ class SoundsScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 15),
                             ),
                             icon: const Icon(Icons.shuffle_rounded),
-                            label: Text('Active Mix ($activeCount)'),
+                            label: Text(context.l10n.activeMix(activeCount)),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -107,7 +113,7 @@ class SoundsScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 15),
                             ),
                             icon: const Icon(Icons.stop_circle_outlined),
-                            label: const Text('Stop All'),
+                            label: Text(context.l10n.stopAll),
                           ),
                         ),
                       ],
@@ -131,7 +137,7 @@ class SoundsScreen extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Sleep Timer',
+                              context.l10n.sleepTimer,
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(color: AppColors.ink),
                             ),
@@ -147,7 +153,9 @@ class SoundsScreen extends StatelessWidget {
                                       .map(
                                         (value) => DropdownMenuItem(
                                           value: value,
-                                          child: Text('$value min'),
+                                          child: Text(
+                                            context.l10n.minutesShort(value),
+                                          ),
                                         ),
                                       )
                                       .toList(),
@@ -175,7 +183,9 @@ class SoundsScreen extends StatelessWidget {
                               ),
                               icon: const Icon(Icons.timer_off_outlined),
                               label: Text(
-                                'Cancel timer • ${controller.sleepTimerLabel}',
+                                context.l10n.cancelTimer(
+                                  controller.sleepTimerLabel,
+                                ),
                               ),
                             )
                           : FilledButton.icon(
@@ -184,9 +194,9 @@ class SoundsScreen extends StatelessWidget {
                                     .startSleepTimer();
                                 if (!started && context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Play at least one sound before starting the sleep timer.',
+                                        context.l10n.playBeforeTimer,
                                       ),
                                     ),
                                   );
@@ -199,13 +209,13 @@ class SoundsScreen extends StatelessWidget {
                                 ),
                               ),
                               icon: const Icon(Icons.bedtime_outlined),
-                              label: const Text('Start sleep timer'),
+                              label: Text(context.l10n.startSleepTimer),
                             ),
                     ),
                     if (controller.sleepTimerJustFinished) ...[
                       const SizedBox(height: 9),
                       Text(
-                        'Sleep timer complete — all sounds stopped.',
+                        context.l10n.sleepTimerComplete,
                         style: Theme.of(context).textTheme.labelMedium
                             ?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
@@ -214,7 +224,7 @@ class SoundsScreen extends StatelessWidget {
                     ],
                     const SizedBox(height: 10),
                     Text(
-                      'Rain, campfire, forest, and piano are ready to mix. More ambience loops are coming soon.',
+                      context.l10n.soundsInfo,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -304,8 +314,8 @@ class _SoundCard extends StatelessWidget {
                         ),
                         IconButton.filled(
                           tooltip: active
-                              ? 'Pause ${sound.name}'
-                              : 'Play ${sound.name}',
+                              ? context.l10n.pauseSound(sound.name)
+                              : context.l10n.playSound(sound.name),
                           onPressed: available ? onToggle : null,
                           style: IconButton.styleFrom(
                             backgroundColor: active
@@ -333,14 +343,14 @@ class _SoundCard extends StatelessWidget {
                           color: Colors.black.withValues(alpha: .58),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 6,
                           ),
                           child: Text(
-                            'COMING SOON',
-                            style: TextStyle(
+                            context.l10n.comingSoon,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -363,7 +373,7 @@ class _SoundCard extends StatelessWidget {
                   value: volume,
                   onChanged: available ? onVolume : null,
                   semanticFormatterCallback: (value) =>
-                      '${(value * 100).round()} percent',
+                      context.l10n.percent((value * 100).round()),
                 ),
               ),
               const Icon(Icons.volume_up_outlined, size: 18),

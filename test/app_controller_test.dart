@@ -113,6 +113,50 @@ void main() {
     expect(restored.allTimeMinutes, 50);
   });
 
+  test(
+    'language preference is device-local and defaults safely to English',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+      await controller.restore();
+      expect(controller.languageCode, 'en');
+
+      await controller.setLanguageCode('tr');
+      expect(preferences.getString('preferred_language_code'), 'tr');
+
+      final restored = AppController(preferences);
+      await restored.restore();
+      expect(restored.languageCode, 'tr');
+
+      await restored.setLanguageCode('unsupported');
+      expect(restored.languageCode, 'en');
+      expect(preferences.getString('preferred_language_code'), 'en');
+    },
+  );
+
+  test(
+    'extended duration settings persist and only reset an idle timer',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+
+      await controller.setDailyGoal(480);
+      await controller.setDefaultFocusMinutes(90);
+      expect(controller.dailyGoalMinutes, 480);
+      expect(controller.remainingSeconds, 90 * 60);
+
+      await controller.startOrToggleTimer();
+      final runningRemaining = controller.remainingSeconds;
+      await controller.setDefaultFocusMinutes(75);
+      expect(controller.remainingSeconds, runningRemaining);
+
+      final restored = AppController(preferences);
+      await restored.restore();
+      expect(restored.dailyGoalMinutes, 480);
+      expect(restored.defaultFocusMinutes, 75);
+    },
+  );
+
   test('an elapsed running timer is safely recorded on restore', () async {
     SharedPreferences.setMockInitialValues({
       'timerStatus': FocusTimerStatus.running.name,

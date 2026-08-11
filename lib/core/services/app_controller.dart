@@ -19,6 +19,19 @@ enum FocusTimerStatus { idle, running, paused, complete }
 
 enum TimerSessionKind { focus, shortBreak }
 
+enum AccountErrorKind {
+  invalidCredentials,
+  emailInUse,
+  weakPassword,
+  invalidEmail,
+  tooManyRequests,
+  network,
+  passwordRequired,
+  unknown,
+}
+
+enum AudioErrorKind { playback, volume }
+
 class AppController extends ChangeNotifier {
   AppController(
     SharedPreferences preferences, {
@@ -26,7 +39,8 @@ class AppController extends ChangeNotifier {
     ProgressRepository? progressRepository,
     SoundEffectService? soundEffectService,
     AccountService? accountService,
-  }) : _audioService = audioService ?? MockAudioService(),
+  }) : _preferences = preferences,
+       _audioService = audioService ?? MockAudioService(),
        _progressRepository =
            progressRepository ??
            SharedPreferencesProgressRepository(preferences),
@@ -36,6 +50,7 @@ class AppController extends ChangeNotifier {
   }
 
   final AudioService _audioService;
+  final SharedPreferences _preferences;
   final ProgressRepository _progressRepository;
   final SoundEffectService _soundEffectService;
   late final AccountService? _accountService;
@@ -46,7 +61,7 @@ class AppController extends ChangeNotifier {
   String? _activeSessionId;
 
   bool accountBusy = false;
-  String? accountError;
+  AccountErrorKind? accountErrorKind;
 
   String username = 'Selin';
   bool darkMode = true;
@@ -54,6 +69,7 @@ class AppController extends ChangeNotifier {
   bool autoStartBreaks = false;
   bool testMode = true;
   bool testPreviewActive = false;
+  String languageCode = 'en';
   int dailyGoalMinutes = 120;
   int defaultFocusMinutes = 25;
   int shortBreakMinutes = 5;
@@ -94,7 +110,7 @@ class AppController extends ChangeNotifier {
   final Map<String, double> _storedSoundVolumes = {
     for (final sound in soundCatalog) sound.id: 0,
   };
-  String? audioErrorMessage;
+  AudioErrorKind? audioErrorKind;
   int sleepTimerMinutes = 30;
   int sleepTimerRemainingSeconds = 0;
   bool sleepTimerActive = false;
@@ -263,6 +279,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> restore() async {
+    languageCode = _normalizedLanguageCode(
+      _preferences.getString('preferred_language_code'),
+    );
     final progress = await _progressRepository.load();
     username = progress.username;
     profileAvatarId = progress.profileAvatarId;
@@ -1148,7 +1167,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> toggleSound(String id) async {
     if (!_audioService.supports(id)) {
-      audioErrorMessage = null;
+      audioErrorKind = null;
       return false;
     }
     final current = soundVolumes[id] ?? 0;
@@ -1161,7 +1180,7 @@ class AppController extends ChangeNotifier {
         soundVolumes[id] = .6;
       }
       _storedSoundVolumes[id] = soundVolumes[id]!;
-      audioErrorMessage = null;
+      audioErrorKind = null;
       sleepTimerJustFinished = false;
       if (soundVolumes.values.where((volume) => volume > 0).length >= 2) {
         _evaluateBadges(mixer: true);
@@ -1173,9 +1192,7 @@ class AppController extends ChangeNotifier {
     } catch (error, stackTrace) {
       soundVolumes[id] = 0;
       debugPrint('Ambience $id failed: $error\n$stackTrace');
-      audioErrorMessage = kDebugMode
-          ? 'This sound could not be played: $error'
-          : 'This sound could not be played. Please try again.';
+      audioErrorKind = AudioErrorKind.playback;
       notifyListeners();
       return false;
     }
@@ -1194,7 +1211,7 @@ class AppController extends ChangeNotifier {
       }
       soundVolumes[id] = value;
       _storedSoundVolumes[id] = value;
-      audioErrorMessage = null;
+      audioErrorKind = null;
       sleepTimerJustFinished = false;
       if (soundVolumes.values.where((volume) => volume > 0).length >= 2) {
         _evaluateBadges(mixer: true);
@@ -1206,9 +1223,7 @@ class AppController extends ChangeNotifier {
       soundVolumes[id] = 0;
       _storedSoundVolumes[id] = 0;
       debugPrint('Ambience volume $id failed: $error\n$stackTrace');
-      audioErrorMessage = kDebugMode
-          ? 'The volume could not be changed: $error'
-          : 'The volume could not be changed. Please try again.';
+      audioErrorKind = AudioErrorKind.volume;
       notifyListeners();
     }
   }
@@ -1321,12 +1336,12 @@ class AppController extends ChangeNotifier {
     final service = _accountService;
     if (service == null || accountBusy) return;
     accountBusy = true;
-    accountError = null;
+    accountErrorKind = null;
     notifyListeners();
     try {
       await service.sendPasswordReset(email);
     } catch (error) {
-      accountError = _friendlyAccountError(error);
+      accountErrorKind = _accountErrorKind(error);
       rethrow;
     } finally {
       accountBusy = false;
@@ -1339,14 +1354,14 @@ class AppController extends ChangeNotifier {
       return;
     }
     accountBusy = true;
-    accountError = null;
+    accountErrorKind = null;
     notifyListeners();
     try {
       await (_progressRepository as AccountProgressRepository)
           .mergeIntoCurrentAccount(_progressSnapshot());
       await restore();
     } catch (error) {
-      accountError = _friendlyAccountError(error);
+      accountErrorKind = _accountErrorKind(error);
     } finally {
       accountBusy = false;
       notifyListeners();
@@ -1357,13 +1372,13 @@ class AppController extends ChangeNotifier {
     final service = _accountService;
     if (service == null || accountBusy) return;
     accountBusy = true;
-    accountError = null;
+    accountErrorKind = null;
     notifyListeners();
     try {
       await service.signOutToGuest();
       await restore();
     } catch (error) {
-      accountError = _friendlyAccountError(error);
+      accountErrorKind = _accountErrorKind(error);
     } finally {
       accountBusy = false;
       notifyListeners();
@@ -1378,7 +1393,7 @@ class AppController extends ChangeNotifier {
       return;
     }
     accountBusy = true;
-    accountError = null;
+    accountErrorKind = null;
     notifyListeners();
     try {
       await service.reauthenticate(password: password);
@@ -1388,7 +1403,7 @@ class AppController extends ChangeNotifier {
       await service.ensureGuest();
       await restore();
     } catch (error) {
-      accountError = _friendlyAccountError(error);
+      accountErrorKind = _accountErrorKind(error);
       rethrow;
     } finally {
       accountBusy = false;
@@ -1402,7 +1417,7 @@ class AppController extends ChangeNotifier {
   }) async {
     if (_accountService == null || accountBusy) return;
     accountBusy = true;
-    accountError = null;
+    accountErrorKind = null;
     final currentProgress = _progressSnapshot();
     notifyListeners();
     try {
@@ -1414,7 +1429,7 @@ class AppController extends ChangeNotifier {
       }
       await restore();
     } catch (error) {
-      accountError = _friendlyAccountError(error);
+      accountErrorKind = _accountErrorKind(error);
       rethrow;
     } finally {
       accountBusy = false;
@@ -1422,23 +1437,33 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  static String _friendlyAccountError(Object error) {
+  static AccountErrorKind _accountErrorKind(Object error) {
     if (error is FirebaseAuthException) {
       return switch (error.code) {
         'invalid-credential' ||
-        'wrong-password' => 'The email or password is incorrect.',
-        'email-already-in-use' => 'An account already uses this email.',
-        'weak-password' => 'Use a password with at least 6 characters.',
-        'invalid-email' => 'Enter a valid email address.',
-        'too-many-requests' => 'Too many attempts. Please try again later.',
-        'network-request-failed' => 'Check your internet connection.',
-        'password-required' =>
-          error.message ?? 'Enter your password to continue.',
-        _ => error.message ?? 'The account action could not be completed.',
+        'wrong-password' => AccountErrorKind.invalidCredentials,
+        'email-already-in-use' => AccountErrorKind.emailInUse,
+        'weak-password' => AccountErrorKind.weakPassword,
+        'invalid-email' => AccountErrorKind.invalidEmail,
+        'too-many-requests' => AccountErrorKind.tooManyRequests,
+        'network-request-failed' => AccountErrorKind.network,
+        'password-required' => AccountErrorKind.passwordRequired,
+        _ => AccountErrorKind.unknown,
       };
     }
-    return 'The account action could not be completed. Please try again.';
+    return AccountErrorKind.unknown;
   }
+
+  Future<void> setLanguageCode(String value) async {
+    final normalized = _normalizedLanguageCode(value);
+    if (languageCode == normalized) return;
+    languageCode = normalized;
+    await _preferences.setString('preferred_language_code', normalized);
+    notifyListeners();
+  }
+
+  static String _normalizedLanguageCode(String? value) =>
+      value == 'tr' ? 'tr' : 'en';
 
   Future<void> setProfileAvatar(String avatarId) async {
     if (!profileAvatarCatalog.any((avatar) => avatar.id == avatarId)) return;
@@ -1565,13 +1590,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> _persistProgress() =>
       _progressRepository.save(_progressSnapshot());
-
-  String formatMinutes(int minutes) {
-    if (minutes < 60) return '$minutes min';
-    final hours = minutes ~/ 60;
-    final remainder = minutes % 60;
-    return remainder == 0 ? '$hours h' : '${hours}h ${remainder}m';
-  }
 
   static String _dateKey(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'

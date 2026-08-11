@@ -11,6 +11,7 @@ import 'features/room/room_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/sounds/sounds_screen.dart';
 import 'features/stats/stats_screen.dart';
+import 'l10n/localization_extensions.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -44,6 +45,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
     if (controller.roomPlacementRequestId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -63,12 +65,12 @@ class _HomeShellState extends State<HomeShell> {
         toolbarHeight: 68,
         leadingWidth: 64,
         leading: IconButton(
-          tooltip: 'Settings',
+          tooltip: l10n.settings,
           onPressed: _openSettings,
           icon: const Icon(Icons.settings_outlined),
         ),
         title: Text(
-          'Cozy Focus Room',
+          l10n.appTitle,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: Theme.of(context).colorScheme.primary,
           ),
@@ -79,7 +81,7 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.only(right: 14),
             child: Semantics(
               button: true,
-              label: 'Open profile',
+              label: l10n.openProfile,
               child: InkWell(
                 key: const Key('profile-button'),
                 onTap: _openProfile,
@@ -126,25 +128,25 @@ class _HomeShellState extends State<HomeShell> {
           child: Row(
             children: [
               _NavItem(
-                label: 'Focus',
+                label: l10n.focus,
                 icon: Icons.timer_outlined,
                 selected: _index == 0,
                 onTap: () => setState(() => _index = 0),
               ),
               _NavItem(
-                label: 'Room',
+                label: l10n.room,
                 icon: Icons.location_on_outlined,
                 selected: _index == 1,
                 onTap: () => setState(() => _index = 1),
               ),
               _NavItem(
-                label: 'Stats',
+                label: l10n.stats,
                 icon: Icons.bar_chart_rounded,
                 selected: _index == 2,
                 onTap: () => setState(() => _index = 2),
               ),
               _NavItem(
-                label: 'Sounds',
+                label: l10n.sounds,
                 icon: Icons.library_music_outlined,
                 selected: _index == 3,
                 onTap: () => setState(() => _index = 3),
@@ -213,7 +215,7 @@ class _BadgeCelebration extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'NEW BADGE',
+                          context.l10n.newBadge,
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
                                 color: badge.color,
@@ -229,18 +231,21 @@ class _BadgeCelebration extends StatelessWidget {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          badge.name,
+                          context.l10n.badgeName(badge),
                           style: Theme.of(context).textTheme.headlineMedium,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        Text(badge.description, textAlign: TextAlign.center),
+                        Text(
+                          context.l10n.badgeDescription(badge),
+                          textAlign: TextAlign.center,
+                        ),
                         const SizedBox(height: 22),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
                             onPressed: onDismiss,
-                            child: const Text('Lovely!'),
+                            child: Text(context.l10n.lovely),
                           ),
                         ),
                       ],
@@ -292,11 +297,17 @@ class _NavItem extends StatelessWidget {
                 children: [
                   Icon(icon, color: foreground, size: 23),
                   const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: foreground,
-                      fontSize: 12,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: foreground,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   ),
                 ],

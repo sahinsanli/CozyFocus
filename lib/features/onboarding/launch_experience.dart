@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/assets/app_assets.dart';
 import '../../core/assets/atlas_sprite.dart';
 import '../../home_shell.dart';
+import '../../l10n/localization_extensions.dart';
 
 class LaunchExperience extends StatefulWidget {
   const LaunchExperience({
@@ -159,14 +160,17 @@ class _CozySplashScreenState extends State<_CozySplashScreen>
                           ),
                           SizedBox(height: compact ? 24 : 42),
                           Text(
-                            'Cozy Focus\nRoom',
+                            context.l10n.appTitle.replaceFirst(
+                              ' Room',
+                              '\nRoom',
+                            ),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.displaySmall
                                 ?.copyWith(fontSize: titleSize, height: 1.12),
                           ),
                           SizedBox(height: compact ? 10 : 14),
                           Text(
-                            'Your peaceful space to grow.',
+                            context.l10n.splashTagline,
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyLarge
                                 ?.copyWith(
@@ -187,7 +191,7 @@ class _CozySplashScreenState extends State<_CozySplashScreen>
                             child: Column(
                               children: [
                                 Text(
-                                  'TAP TO BEGIN',
+                                  context.l10n.tapToBegin,
                                   style: Theme.of(context).textTheme.labelLarge
                                       ?.copyWith(
                                         color: colors.primary,
@@ -230,23 +234,20 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
   int _page = 0;
   bool _completing = false;
 
-  static const _pages = <_OnboardingPageData>[
+  List<_OnboardingPageData> _pages(BuildContext context) => [
     _OnboardingPageData(
-      title: 'Find Your Focus',
-      description:
-          'Create a dedicated space for deep work and mindfulness. Choose your time and let the world fade away.',
+      title: context.l10n.onboardingFocusTitle,
+      description: context.l10n.onboardingFocusBody,
       visual: _OnboardingVisual.focus,
     ),
     _OnboardingPageData(
-      title: 'Watch Your Progress Grow',
-      description:
-          'Every focused minute helps you unlock new decorations for your room. Build your perfect sanctuary as you reach your goals.',
+      title: context.l10n.onboardingProgressTitle,
+      description: context.l10n.onboardingProgressBody,
       visual: _OnboardingVisual.growth,
     ),
     _OnboardingPageData(
-      title: 'Your Personal Sanctuary',
-      description:
-          'Make it yours. Customize your room with plants, furniture, and calming sounds. Ready to start your journey?',
+      title: context.l10n.onboardingSanctuaryTitle,
+      description: context.l10n.onboardingSanctuaryBody,
       visual: _OnboardingVisual.sanctuary,
     ),
   ];
@@ -258,7 +259,7 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
   }
 
   Future<void> _next() async {
-    if (_page < _pages.length - 1) {
+    if (_page < 2) {
       await _pageController.nextPage(
         duration: const Duration(milliseconds: 480),
         curve: Curves.easeOutCubic,
@@ -277,6 +278,7 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final pages = _pages(context);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -285,11 +287,11 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
               height: 48,
               child: Align(
                 alignment: Alignment.centerRight,
-                child: _page < _pages.length - 1
+                child: _page < pages.length - 1
                     ? TextButton(
                         key: const Key('onboarding-skip'),
                         onPressed: _completing ? null : _finish,
-                        child: const Text('Skip'),
+                        child: Text(context.l10n.skip),
                       )
                     : const SizedBox.shrink(),
               ),
@@ -297,10 +299,10 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (value) => setState(() => _page = value),
                 itemBuilder: (context, index) =>
-                    _OnboardingPage(data: _pages[index]),
+                    _OnboardingPage(data: pages[index]),
               ),
             ),
             Padding(
@@ -310,7 +312,7 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
-                      _pages.length,
+                      pages.length,
                       (index) => AnimatedContainer(
                         duration: const Duration(milliseconds: 280),
                         curve: Curves.easeOutCubic,
@@ -342,7 +344,9 @@ class _OnboardingScreenState extends State<_OnboardingScreen> {
                             )
                           : const Icon(Icons.arrow_forward_rounded),
                       label: Text(
-                        _page == _pages.length - 1 ? 'Get Started' : 'Next',
+                        _page == pages.length - 1
+                            ? context.l10n.getStarted
+                            : context.l10n.next,
                       ),
                       style: FilledButton.styleFrom(
                         shape: const StadiumBorder(),

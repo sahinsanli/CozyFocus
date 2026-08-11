@@ -16,7 +16,7 @@ abstract final class AppAssets {
   static const claimRewardAudio = 'assets/audio/claim_reward.mp3';
   static const catMeowAudio = 'assets/audio/cat_meow.mp3';
 
-  static const appIcon = 'assets/visuals/app_icon_cozy_focus.png';
+  static const appIcon = 'assets/visuals/app_icon_cozy_focus_v3.png';
   static const focusRoomHero = 'assets/visuals/cozy_focus_room_hero_v2.png';
   static const sanctuaryRoom = 'assets/visuals/cozy_sanctuary_room_v1.png';
   static const plantGrowthAtlas = 'assets/visuals/plant_growth_atlas.png';

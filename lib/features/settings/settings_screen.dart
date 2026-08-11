@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../../l10n/localization_extensions.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -21,7 +22,7 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
+            child: Text(context.l10n.done),
           ),
         ],
       ),
@@ -36,11 +37,21 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
+    final dailyGoalValues = _withCurrent(const [
+      60,
+      90,
+      120,
+      180,
+      240,
+      360,
+      480,
+    ], controller.dailyGoalMinutes);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          'Cozy Focus Room',
+          l10n.appTitle,
           style: TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
       ),
@@ -53,20 +64,20 @@ class SettingsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Settings',
+                  l10n.settings,
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Customize your cozy experience.',
+                  l10n.settingsSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 34),
-                const _SectionLabel('APP SETTINGS'),
+                _SectionLabel(l10n.appSettings),
                 const SizedBox(height: 12),
                 CozyCard(
                   padding: EdgeInsets.zero,
@@ -74,8 +85,8 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       _SettingsRow(
                         icon: Icons.notifications_outlined,
-                        title: 'Focus Reminders',
-                        subtitle: 'Show a gentle nudge on the Focus screen',
+                        title: l10n.focusReminders,
+                        subtitle: l10n.focusRemindersBody,
                         trailing: Switch(
                           value: controller.focusReminders,
                           onChanged: controller.setFocusReminders,
@@ -84,20 +95,16 @@ class SettingsScreen extends StatelessWidget {
                       const Divider(height: 1),
                       _SettingsRow(
                         icon: Icons.flag_outlined,
-                        title: 'Daily Goal',
-                        subtitle: 'Set your focus target',
+                        title: l10n.dailyGoal,
+                        subtitle: l10n.dailyGoalBody,
                         trailing: DropdownButtonHideUnderline(
                           child: DropdownButton<int>(
                             value: controller.dailyGoalMinutes,
-                            items: const [60, 90, 120, 180]
+                            items: dailyGoalValues
                                 .map(
                                   (value) => DropdownMenuItem(
                                     value: value,
-                                    child: Text(
-                                      value < 60
-                                          ? '$value min'
-                                          : '${value ~/ 60}${value % 60 == 0 ? ' h' : '.5 h'}',
-                                    ),
+                                    child: Text(l10n.formatDuration(value)),
                                   ),
                                 )
                                 .toList(),
@@ -110,13 +117,16 @@ class SettingsScreen extends StatelessWidget {
                       const Divider(height: 1),
                       _SettingsRow(
                         icon: Icons.palette_outlined,
-                        title: 'Appearance',
-                        subtitle: 'Light or Dark mode',
+                        title: l10n.appearance,
+                        subtitle: l10n.appearanceBody,
                         trailing: SegmentedButton<bool>(
                           showSelectedIcon: false,
-                          segments: const [
-                            ButtonSegment(value: false, label: Text('Light')),
-                            ButtonSegment(value: true, label: Text('Dark')),
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              label: Text(l10n.light),
+                            ),
+                            ButtonSegment(value: true, label: Text(l10n.dark)),
                           ],
                           selected: {controller.darkMode},
                           onSelectionChanged: (values) =>
@@ -129,11 +139,38 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const Divider(height: 1),
+                      _SettingsRow(
+                        icon: Icons.language_rounded,
+                        title: l10n.language,
+                        subtitle: l10n.languageBody,
+                        trailing: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            key: const Key('language-selector'),
+                            value: controller.languageCode,
+                            items: [
+                              DropdownMenuItem(
+                                value: 'en',
+                                child: Text(l10n.english),
+                              ),
+                              DropdownMenuItem(
+                                value: 'tr',
+                                child: Text(l10n.turkish),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                controller.setLanguageCode(value);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: DesignTokens.sectionGap),
-                const _SectionLabel('FOCUS OPTIONS'),
+                _SectionLabel(l10n.focusOptions),
                 const SizedBox(height: 12),
                 CozyCard(
                   padding: EdgeInsets.zero,
@@ -141,31 +178,43 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       _SettingsRow(
                         icon: Icons.timer_outlined,
-                        title: 'Default Focus Duration',
-                        subtitle: 'Used for new focus sessions',
+                        title: l10n.defaultFocusDuration,
+                        subtitle: l10n.defaultFocusDurationBody,
                         trailing: _MinutesDropdown(
                           value: controller.defaultFocusMinutes,
-                          values: const [15, 25, 45, 60],
+                          values: _withCurrent(const [
+                            15,
+                            25,
+                            45,
+                            60,
+                            75,
+                            90,
+                          ], controller.defaultFocusMinutes),
                           onChanged: controller.setDefaultFocusMinutes,
                         ),
                       ),
                       const Divider(height: 1),
                       _SettingsRow(
                         icon: Icons.coffee_outlined,
-                        title: 'Short Break Duration',
-                        subtitle: 'Time to gently recharge',
+                        title: l10n.shortBreakDuration,
+                        subtitle: l10n.shortBreakDurationBody,
                         trailing: _MinutesDropdown(
                           value: controller.shortBreakMinutes,
-                          values: const [5, 10, 15],
+                          values: _withCurrent(const [
+                            5,
+                            10,
+                            15,
+                          ], controller.shortBreakMinutes),
                           onChanged: controller.setShortBreakMinutes,
                         ),
                       ),
                       const Divider(height: 1),
                       _SettingsRow(
                         icon: Icons.autorenew_rounded,
-                        title: 'Auto-start Breaks',
-                        subtitle:
-                            'Start a ${controller.shortBreakMinutes} min break after focus ends',
+                        title: l10n.autoStartBreaks,
+                        subtitle: l10n.autoStartBreaksBody(
+                          controller.shortBreakMinutes,
+                        ),
                         trailing: Switch(
                           value: controller.autoStartBreaks,
                           onChanged: controller.setAutoStartBreaks,
@@ -174,8 +223,8 @@ class SettingsScreen extends StatelessWidget {
                       const Divider(height: 1),
                       _SettingsRow(
                         icon: Icons.science_outlined,
-                        title: 'Test Mode',
-                        subtitle: 'Preview timers, rewards, and unlocks',
+                        title: l10n.testMode,
+                        subtitle: l10n.testModeSettingsBody,
                         trailing: Switch(
                           value: controller.testMode,
                           onChanged: controller.setTestMode,
@@ -185,11 +234,11 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: DesignTokens.sectionGap),
-                const _SectionLabel('ACCOUNT & SYNC'),
+                _SectionLabel(l10n.accountAndSync),
                 const SizedBox(height: 12),
                 _AccountCard(controller: controller),
                 const SizedBox(height: DesignTokens.sectionGap),
-                const _SectionLabel('SUPPORT'),
+                _SectionLabel(l10n.supportSection),
                 const SizedBox(height: 12),
                 CozyCard(
                   padding: EdgeInsets.zero,
@@ -197,33 +246,33 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       _LinkRow(
                         icon: Icons.help_outline,
-                        title: 'Help Center',
+                        title: l10n.helpCenter,
                         onTap: () => _showInfo(
                           context,
-                          'Help Center',
-                          'Cozy Focus works offline and securely syncs your progress when you connect a Google or email account.',
+                          l10n.helpCenter,
+                          l10n.helpCenterBody,
                         ),
                       ),
                       const Divider(height: 1),
                       _LinkRow(
                         icon: Icons.info_outline,
-                        title: 'About Cozy Focus',
+                        title: l10n.aboutCozyFocus,
                         onTap: () => _showInfo(
                           context,
-                          'About Cozy Focus',
-                          'Cozy Focus • Version 1.0.0\nA calm, local-first productivity sanctuary.',
+                          l10n.aboutCozyFocus,
+                          l10n.aboutBody,
                         ),
                       ),
                       const Divider(height: 1),
                       _LinkRow(
                         icon: Icons.shield_outlined,
-                        title: 'Privacy Policy',
+                        title: l10n.privacyPolicy,
                         onTap: () => _openPage('privacy'),
                       ),
                       const Divider(height: 1),
                       _LinkRow(
                         icon: Icons.support_agent_rounded,
-                        title: 'Support',
+                        title: l10n.support,
                         onTap: () => _openPage('support'),
                       ),
                     ],
@@ -245,7 +294,10 @@ class AccountScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: const Text('Account & Sync')),
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(context.l10n.accountSyncTitle),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 44),
         child: Center(
@@ -264,16 +316,16 @@ class AccountScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   controller.hasCloudAccount
-                      ? 'Your sanctuary is protected'
-                      : 'Keep your progress safe',
+                      ? context.l10n.sanctuaryProtected
+                      : context.l10n.accountKeepProgress,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   controller.hasCloudAccount
-                      ? 'Your focus history, rewards, inventory, and room are synced with your account.'
-                      : 'Guest progress stays on this device. Connect Google or create an email account so it survives a reinstall or device change.',
+                      ? context.l10n.syncProtectedBody
+                      : context.l10n.guestSyncBody,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -299,14 +351,15 @@ class _AccountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final account = controller.account;
     final isGuest = account?.isGuest ?? true;
+    final l10n = context.l10n;
     final syncLabel = switch (controller.cloudSyncState) {
-      CloudSyncState.localOnly => 'Stored safely on this device',
-      CloudSyncState.syncing => 'Syncing your sanctuary…',
+      CloudSyncState.localOnly => l10n.storedOnDevice,
+      CloudSyncState.syncing => l10n.syncing,
       CloudSyncState.synced =>
         controller.lastSyncedAt == null
-            ? 'Cloud sync is active'
-            : 'Synced at ${_clock(controller.lastSyncedAt!)}',
-      CloudSyncState.error => 'Offline — changes will sync later',
+            ? l10n.cloudSyncActive
+            : l10n.syncedAt(_clock(controller.lastSyncedAt!)),
+      CloudSyncState.error => l10n.offlineSyncLater,
     };
     return CozyCard(
       padding: const EdgeInsets.all(18),
@@ -329,10 +382,10 @@ class _AccountCard extends StatelessWidget {
                   children: [
                     Text(
                       isGuest
-                          ? 'Guest account'
+                          ? l10n.guestAccount
                           : account?.email ??
                                 account?.displayName ??
-                                'Cozy account',
+                                l10n.cozyAccount,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
@@ -346,7 +399,7 @@ class _AccountCard extends StatelessWidget {
               ),
               if (!isGuest)
                 IconButton(
-                  tooltip: 'Sync now',
+                  tooltip: l10n.syncNow,
                   onPressed: controller.accountBusy
                       ? null
                       : controller.syncAccountNow,
@@ -358,10 +411,10 @@ class _AccountCard extends StatelessWidget {
             const SizedBox(height: 14),
             const LinearProgressIndicator(),
           ],
-          if (controller.accountError != null) ...[
+          if (controller.accountErrorKind != null) ...[
             const SizedBox(height: 10),
             Text(
-              controller.accountError!,
+              l10n.accountError(controller.accountErrorKind),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
@@ -371,7 +424,7 @@ class _AccountCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  'Account services are temporarily unavailable. Your progress remains on this device.',
+                  l10n.accountUnavailable,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -382,10 +435,10 @@ class _AccountCard extends StatelessWidget {
                   : () => _runAction(
                       context,
                       controller.continueWithGoogle,
-                      success: 'Your progress is now linked to Google.',
+                      success: l10n.googleLinked,
                     ),
               icon: const Icon(Icons.g_mobiledata_rounded),
-              label: const Text('Continue with Google'),
+              label: Text(l10n.continueGoogle),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -394,14 +447,14 @@ class _AccountCard extends StatelessWidget {
                   ? null
                   : () => _showEmailDialog(context, controller, create: true),
               icon: const Icon(Icons.alternate_email_rounded),
-              label: const Text('Create email account'),
+              label: Text(l10n.createEmailAccount),
             ),
             TextButton(
               onPressed:
                   controller.accountBusy || !controller.accountFeaturesAvailable
                   ? null
                   : () => _showEmailDialog(context, controller, create: false),
-              child: const Text('I already have an account'),
+              child: Text(l10n.alreadyHaveAccount),
             ),
           ] else ...[
             OutlinedButton.icon(
@@ -410,10 +463,10 @@ class _AccountCard extends StatelessWidget {
                   : () => _runAction(
                       context,
                       controller.signOut,
-                      success: 'Signed out. A new guest space is ready.',
+                      success: l10n.signedOut,
                     ),
               icon: const Icon(Icons.logout_rounded),
-              label: const Text('Log out'),
+              label: Text(l10n.logOut),
             ),
             TextButton.icon(
               style: TextButton.styleFrom(
@@ -423,7 +476,7 @@ class _AccountCard extends StatelessWidget {
                   ? null
                   : () => _confirmDelete(context, controller),
               icon: const Icon(Icons.delete_outline_rounded),
-              label: const Text('Delete account and data'),
+              label: Text(l10n.deleteAccountData),
             ),
           ],
         ],
@@ -441,13 +494,14 @@ Future<void> _showEmailDialog(
   AppController controller, {
   required bool create,
 }) async {
+  final l10n = context.l10n;
   final email = TextEditingController();
   final password = TextEditingController();
   final formKey = GlobalKey<FormState>();
   final submit = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(create ? 'Create account' : 'Email sign in'),
+      title: Text(create ? l10n.createAccount : l10n.emailSignIn),
       content: Form(
         key: formKey,
         child: Column(
@@ -457,9 +511,9 @@ Future<void> _showEmailDialog(
               controller: email,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: l10n.email),
               validator: (value) => value == null || !value.contains('@')
-                  ? 'Enter a valid email.'
+                  ? l10n.invalidEmail
                   : null,
             ),
             const SizedBox(height: 10),
@@ -469,9 +523,9 @@ Future<void> _showEmailDialog(
               autofillHints: [
                 create ? AutofillHints.newPassword : AutofillHints.password,
               ],
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: InputDecoration(labelText: l10n.password),
               validator: (value) => value == null || value.length < 6
-                  ? 'Use at least 6 characters.'
+                  ? l10n.passwordSixChars
                   : null,
             ),
             if (!create)
@@ -484,14 +538,12 @@ Future<void> _showEmailDialog(
                       await controller.sendPasswordReset(email.text);
                       if (dialogContext.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Password reset email sent.'),
-                          ),
+                          SnackBar(content: Text(l10n.resetEmailSent)),
                         );
                       }
                     } catch (_) {}
                   },
-                  child: const Text('Forgot password?'),
+                  child: Text(l10n.forgotPassword),
                 ),
               ),
           ],
@@ -500,7 +552,7 @@ Future<void> _showEmailDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -508,7 +560,7 @@ Future<void> _showEmailDialog(
               Navigator.pop(dialogContext, true);
             }
           },
-          child: Text(create ? 'Create' : 'Sign in'),
+          child: Text(create ? l10n.create : l10n.signIn),
         ),
       ],
     ),
@@ -519,9 +571,7 @@ Future<void> _showEmailDialog(
     () => create
         ? controller.createEmailAccount(email.text, password.text)
         : controller.signInWithEmail(email.text, password.text),
-    success: create
-        ? 'Account created. Your progress is syncing.'
-        : 'Welcome back. Your progress has been merged.',
+    success: create ? l10n.accountCreated : l10n.welcomeBack,
   );
 }
 
@@ -529,26 +579,23 @@ Future<void> _confirmDelete(
   BuildContext context,
   AppController controller,
 ) async {
+  final l10n = context.l10n;
   final password = TextEditingController();
   final needsPassword = controller.account?.type == CozyAccountType.email;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Delete account?'),
+      title: Text(l10n.deleteAccountQuestion),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'This permanently deletes your cloud progress and account. This cannot be undone.',
-          ),
+          Text(l10n.deleteAccountWarning),
           if (needsPassword) ...[
             const SizedBox(height: 16),
             TextField(
               controller: password,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm your password',
-              ),
+              decoration: InputDecoration(labelText: l10n.confirmPassword),
             ),
           ],
         ],
@@ -556,20 +603,20 @@ Future<void> _confirmDelete(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: AppColors.terracotta),
           onPressed: () {
             if (needsPassword && password.text.isEmpty) {
-              ScaffoldMessenger.of(dialogContext).showSnackBar(
-                const SnackBar(content: Text('Enter your password.')),
-              );
+              ScaffoldMessenger.of(
+                dialogContext,
+              ).showSnackBar(SnackBar(content: Text(l10n.enterPassword)));
               return;
             }
             Navigator.pop(dialogContext, true);
           },
-          child: const Text('Delete permanently'),
+          child: Text(l10n.deletePermanently),
         ),
       ],
     ),
@@ -578,7 +625,7 @@ Future<void> _confirmDelete(
   await _runAction(
     context,
     () => controller.deleteAccount(password: password.text),
-    success: 'Your account and cloud data were deleted.',
+    success: l10n.accountDeleted,
   );
 }
 
@@ -598,7 +645,7 @@ Future<void> _runAction(
     final controller = AppScope.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(controller.accountError ?? 'The account action failed.'),
+        content: Text(context.l10n.accountError(controller.accountErrorKind)),
       ),
     );
   }
@@ -709,8 +756,10 @@ class _MinutesDropdown extends StatelessWidget {
         value: value,
         items: values
             .map(
-              (value) =>
-                  DropdownMenuItem(value: value, child: Text('$value min')),
+              (value) => DropdownMenuItem(
+                value: value,
+                child: Text(context.l10n.formatDuration(value)),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -719,4 +768,9 @@ class _MinutesDropdown extends StatelessWidget {
       ),
     );
   }
+}
+
+List<int> _withCurrent(List<int> standard, int current) {
+  final values = {...standard, current}.toList()..sort();
+  return values;
 }

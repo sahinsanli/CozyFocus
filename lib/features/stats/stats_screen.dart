@@ -7,6 +7,7 @@ import '../../core/models/app_progress.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../../l10n/localization_extensions.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -32,13 +33,13 @@ class StatsScreen extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Your Journey',
+                context.l10n.yourJourney,
                 style: Theme.of(context).textTheme.displaySmall,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               Text(
-                'Take a moment to reflect on your progress.\nEvery focused minute builds a calmer you.',
+                context.l10n.journeySubtitle,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -51,34 +52,41 @@ class StatsScreen extends StatelessWidget {
                   children: [
                     _SectionTitle(
                       icon: Icons.auto_awesome,
-                      title: 'Focus Summary',
+                      title: context.l10n.focusSummary,
                     ),
                     const SizedBox(height: 18),
                     _SummaryTile(
-                      label: 'TODAY',
-                      value: controller.formatMinutes(controller.todayMinutes),
+                      label: context.l10n.today,
+                      value: context.l10n.formatDuration(
+                        controller.todayMinutes,
+                      ),
                       note:
                           controller.todayMinutes >= controller.dailyGoalMinutes
-                          ? 'Daily goal complete'
-                          : '${controller.dailyGoalMinutes - controller.todayMinutes} min to your goal',
+                          ? context.l10n.dailyGoalComplete
+                          : context.l10n.minutesToGoal(
+                              controller.dailyGoalMinutes -
+                                  controller.todayMinutes,
+                            ),
                       tint: AppColors.creamLow,
                     ),
                     const SizedBox(height: 12),
                     _SummaryTile(
-                      label: 'WEEKLY',
-                      value: controller.formatMinutes(controller.weeklyMinutes),
-                      note: 'Your current rhythm',
+                      label: context.l10n.weekly,
+                      value: context.l10n.formatDuration(
+                        controller.weeklyMinutes,
+                      ),
+                      note: context.l10n.currentRhythm,
                       tint: AppColors.blush,
                     ),
                     const SizedBox(height: 12),
                     _SummaryTile(
-                      label: 'ALL TIME',
-                      value: controller.formatMinutes(
+                      label: context.l10n.allTime,
+                      value: context.l10n.formatDuration(
                         controller.allTimeMinutes,
                       ),
                       note: controller.allTimeMinutes == 0
-                          ? 'Your journey starts here'
-                          : 'A growing focus practice',
+                          ? context.l10n.journeyStartsHere
+                          : context.l10n.growingPractice,
                       tint: AppColors.sageSoft.withValues(alpha: .28),
                     ),
                   ],
@@ -92,7 +100,7 @@ class StatsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Daily Streak',
+                      context.l10n.dailyStreak,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 16),
@@ -109,7 +117,7 @@ class StatsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'DAYS IN A ROW',
+                      context.l10n.daysInARow,
                       style: Theme.of(
                         context,
                       ).textTheme.labelLarge?.copyWith(letterSpacing: 1.1),
@@ -124,7 +132,7 @@ class StatsScreen extends StatelessWidget {
                   children: [
                     _SectionTitle(
                       icon: Icons.bar_chart_rounded,
-                      title: 'This Week’s Rhythm',
+                      title: context.l10n.weekRhythm,
                     ),
                     const SizedBox(height: 18),
                     SizedBox(
@@ -144,7 +152,7 @@ class StatsScreen extends StatelessWidget {
                   children: [
                     _SectionTitle(
                       icon: Icons.flag_outlined,
-                      title: 'Milestones',
+                      title: context.l10n.milestones,
                     ),
                     const SizedBox(height: 18),
                     Container(
@@ -160,8 +168,12 @@ class StatsScreen extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   upcoming.isEmpty
-                                      ? 'Sanctuary Keeper'
-                                      : currentCraft?.name ?? 'Ready to claim',
+                                      ? context.l10n.sanctuaryKeeper
+                                      : currentCraft == null
+                                      ? context.l10n.readyToClaim
+                                      : context.l10n.decorationName(
+                                          currentCraft,
+                                        ),
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(color: AppColors.ink),
                                 ),
@@ -186,10 +198,15 @@ class StatsScreen extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               upcoming.isEmpty
-                                  ? 'Every room reward is unlocked.'
+                                  ? context.l10n.everyRewardUnlocked
                                   : currentCraft == null
-                                  ? 'Claim the finished item to add it to your inventory.'
-                                  : '${currentCraft.unlockMinutes - controller.craftProgress.accumulatedMinutes} focused minutes to finish',
+                                  ? context.l10n.claimFinishedItem
+                                  : context.l10n.focusedMinutesToFinish(
+                                      currentCraft.unlockMinutes -
+                                          controller
+                                              .craftProgress
+                                              .accumulatedMinutes,
+                                    ),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: AppColors.mutedInk),
                             ),
@@ -199,7 +216,7 @@ class StatsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'UPCOMING UNLOCKS',
+                      context.l10n.upcomingUnlocks,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         letterSpacing: 1,
@@ -207,12 +224,12 @@ class StatsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     if (upcoming.isEmpty)
-                      const ListTile(
+                      ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           child: Icon(Icons.done_all_rounded),
                         ),
-                        title: Text('All decorations unlocked'),
+                        title: Text(context.l10n.allDecorationsUnlocked),
                       )
                     else
                       ...(controller.testMode
@@ -226,12 +243,14 @@ class StatsScreen extends StatelessWidget {
                                 backgroundColor: AppColors.beige,
                                 child: Icon(item.icon, color: AppColors.sage),
                               ),
-                              title: Text(item.name),
+                              title: Text(context.l10n.decorationName(item)),
                               subtitle: Text(
                                 controller.inventoryStatus(item.id) ==
                                         InventoryStatus.pendingClaim
-                                    ? 'Ready to claim'
-                                    : '${item.unlockMinutes} focused minutes required',
+                                    ? context.l10n.readyToClaim
+                                    : context.l10n.focusedMinutesRequired(
+                                        item.unlockMinutes,
+                                      ),
                               ),
                               trailing: Icon(
                                 controller.inventoryStatus(item.id) ==
@@ -347,7 +366,7 @@ class _WeeklyChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final labels = context.l10n.weekdayInitials.split(',');
     final maxValue = math.max(30, values.fold(0, math.max));
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -358,7 +377,9 @@ class _WeeklyChart extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Text(
-                values[index] == 0 ? '' : '${values[index]}m',
+                values[index] == 0
+                    ? ''
+                    : context.l10n.minutesShort(values[index]),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 5),

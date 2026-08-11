@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
+import '../../l10n/localization_extensions.dart';
 
 class RoomScreen extends StatelessWidget {
   const RoomScreen({super.key});
@@ -41,7 +42,7 @@ class RoomScreen extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Room Decoration',
+                            context.l10n.roomDecoration,
                             maxLines: 1,
                             style: Theme.of(
                               context,
@@ -50,7 +51,7 @@ class RoomScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Build your sanctuary, one focus at a time.',
+                          context.l10n.buildSanctuary,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(
                                 color: Theme.of(
@@ -84,7 +85,7 @@ class RoomScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Auto-saved',
+                            context.l10n.autoSaved,
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   color: Theme.of(
@@ -139,7 +140,7 @@ class RoomScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Inventory',
+                      context.l10n.inventory,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge,
@@ -150,7 +151,10 @@ class RoomScreen extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        '${controller.unlockedDecorationCount}/${decorationCatalog.length} available',
+                        context.l10n.availableCount(
+                          controller.unlockedDecorationCount,
+                          decorationCatalog.length,
+                        ),
                         maxLines: 1,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -160,7 +164,7 @@ class RoomScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Tap an available item to place it in its designed home or store it.',
+                context.l10n.inventoryHint,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -201,7 +205,7 @@ class RoomScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Gentle Goal Collection',
+                      context.l10n.gentleGoalCollection,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -213,7 +217,7 @@ class RoomScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Complete the daily goal to open a non-repeating decor box. Tap an owned piece to place or store it.',
+                context.l10n.gentleGoalCollectionHint,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 14),
@@ -303,7 +307,9 @@ class RoomScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            owned ? item.name : 'Mystery',
+                            owned
+                                ? context.l10n.collectibleName(item)
+                                : context.l10n.mystery,
                             maxLines: 2,
                             textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
@@ -312,10 +318,17 @@ class RoomScreen extends StatelessWidget {
                           if (owned)
                             Text(
                               placed
-                                  ? 'In room'
+                                  ? context.l10n.inRoom
                                   : canPlace
-                                  ? 'Stored'
-                                  : 'Needs ${decorationCatalog.firstWhere((main) => main.id == item.supportItemId).name}',
+                                  ? context.l10n.stored
+                                  : context.l10n.needsItem(
+                                      context.l10n.decorationName(
+                                        decorationCatalog.firstWhere(
+                                          (main) =>
+                                              main.id == item.supportItemId,
+                                        ),
+                                      ),
+                                    ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.labelSmall
@@ -573,8 +586,11 @@ class _RoomSprite extends StatelessWidget {
         child: Semantics(
           button: item.isInteractive,
           label: item.isInteractive
-              ? '${item.name}, tap to switch ${active ? 'off' : 'on'}'
-              : item.name,
+              ? context.l10n.switchDecoration(
+                  context.l10n.decorationName(item),
+                  active ? context.l10n.off : context.l10n.on,
+                )
+              : context.l10n.decorationName(item),
           child: GestureDetector(
             key: Key('room-decoration-${item.id}'),
             behavior: HitTestBehavior.translucent,
@@ -671,7 +687,7 @@ class _CollectibleRoomSprite extends StatelessWidget {
       child: Transform.rotate(
         angle: item.placement.rotationDegrees * math.pi / 180,
         child: Semantics(
-          label: item.name,
+          label: context.l10n.collectibleName(item),
           child: TweenAnimationBuilder<double>(
             key: Key('room-collectible-${item.id}'),
             duration: const Duration(milliseconds: 460),
@@ -916,9 +932,13 @@ class _InventoryCard extends StatelessWidget {
                                   const SizedBox(width: 5),
                                   Text(
                                     switch (status) {
-                                      InventoryStatus.crafting => 'Crafting',
-                                      InventoryStatus.pendingClaim => 'Claim',
-                                      _ => '${item.unlockMinutes} min',
+                                      InventoryStatus.crafting =>
+                                        context.l10n.crafting,
+                                      InventoryStatus.pendingClaim =>
+                                        context.l10n.claim,
+                                      _ => context.l10n.minutesShort(
+                                        item.unlockMinutes,
+                                      ),
                                     },
                                     style: const TextStyle(
                                       color: Colors.white,
@@ -941,7 +961,7 @@ class _InventoryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    item.name,
+                    context.l10n.decorationName(item),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
@@ -957,14 +977,14 @@ class _InventoryCard extends StatelessWidget {
             ),
             Text(
               status == InventoryStatus.owned
-                  ? 'Owned • tap to place'
+                  ? context.l10n.ownedTapToPlace
                   : status == InventoryStatus.placed
-                  ? 'Placed • tap to store'
+                  ? context.l10n.placedTapToStore
                   : status == InventoryStatus.pendingClaim
-                  ? 'Waiting in claim queue'
+                  ? context.l10n.waitingClaimQueue
                   : status == InventoryStatus.crafting
-                  ? 'In progress'
-                  : item.category,
+                  ? context.l10n.inProgress
+                  : context.l10n.decorationCategory(item.category),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

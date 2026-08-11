@@ -8,6 +8,7 @@ import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
 import '../../core/widgets/profile_avatar.dart';
 import '../settings/settings_screen.dart';
+import '../../l10n/localization_extensions.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -17,14 +18,14 @@ class ProfileScreen extends StatelessWidget {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit profile'),
+        title: Text(context.l10n.editProfile),
         content: TextFormField(
           initialValue: currentName,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.l10n.name,
+            border: const OutlineInputBorder(),
           ),
           onChanged: (value) => draftName = value,
           onFieldSubmitted: (value) => Navigator.pop(context, value),
@@ -32,11 +33,11 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, draftName),
-            child: const Text('Save'),
+            child: Text(context.l10n.save),
           ),
         ],
       ),
@@ -60,13 +61,13 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Choose your profile picture',
+                  context.l10n.chooseProfilePicture,
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Pick a cozy symbol for your sanctuary.',
+                  context.l10n.chooseProfilePictureBody,
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -114,7 +115,7 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 7),
                                 Text(
-                                  avatar.name,
+                                  context.l10n.avatarName(avatar),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(
@@ -147,12 +148,12 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          'Cozy Focus Room',
+          context.l10n.appTitle,
           style: TextStyle(color: Theme.of(context).colorScheme.primary),
         ),
         actions: [
           IconButton(
-            tooltip: 'Settings',
+            tooltip: context.l10n.settings,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
@@ -183,7 +184,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 9),
                 Text(
-                  'Tap your picture to change it',
+                  context.l10n.tapPictureToChange,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 24),
@@ -201,9 +202,9 @@ class ProfileScreen extends StatelessWidget {
                     color: AppColors.sand,
                     borderRadius: BorderRadius.all(Radius.circular(30)),
                   ),
-                  child: const Text(
-                    '🌱  Zen Master',
-                    style: TextStyle(color: AppColors.ink),
+                  child: Text(
+                    context.l10n.zenMaster,
+                    style: const TextStyle(color: AppColors.ink),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -217,7 +218,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit Profile'),
+                  label: Text(context.l10n.editProfile),
                 ),
                 const SizedBox(height: 38),
                 Row(
@@ -228,7 +229,7 @@ class ProfileScreen extends StatelessWidget {
                         value: (controller.allTimeMinutes / 60).toStringAsFixed(
                           1,
                         ),
-                        label: 'Focus Hours',
+                        label: context.l10n.focusHours,
                         tint: AppColors.sageSoft,
                       ),
                     ),
@@ -237,7 +238,7 @@ class ProfileScreen extends StatelessWidget {
                       child: _ProfileStat(
                         icon: Icons.local_fire_department_outlined,
                         value: '${controller.streakDays}',
-                        label: 'Day Streak',
+                        label: context.l10n.dayStreak,
                         tint: AppColors.terracottaSoft,
                       ),
                     ),
@@ -247,7 +248,7 @@ class ProfileScreen extends StatelessWidget {
                 _ProfileStat(
                   icon: Icons.location_on_outlined,
                   value: '${controller.unlockedDecorationCount}',
-                  label: 'Decorations',
+                  label: context.l10n.decorations,
                   tint: AppColors.sand,
                   wide: true,
                 ),
@@ -255,7 +256,7 @@ class ProfileScreen extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Earned Badges',
+                    context.l10n.earnedBadges,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                 ),
@@ -352,7 +353,7 @@ class _Badge extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              data.name,
+              context.l10n.badgeName(data),
               textAlign: TextAlign.center,
               maxLines: 2,
               style: Theme.of(context).textTheme.labelLarge,

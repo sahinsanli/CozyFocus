@@ -13,6 +13,8 @@ import '../../core/theme/design_tokens.dart';
 import '../../core/widgets/app_scope.dart';
 import '../../core/widgets/cozy_card.dart';
 import '../settings/settings_screen.dart';
+import '../../l10n/localization_extensions.dart';
+import '../../l10n/app_localizations.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -20,6 +22,7 @@ class FocusScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
     final minutes = controller.remainingSeconds ~/ 60;
     final seconds = controller.remainingSeconds % 60;
     final time =
@@ -42,11 +45,11 @@ class FocusScreen extends StatelessWidget {
               Text(
                 controller.showCelebration
                     ? controller.testPreviewActive
-                          ? 'Test focus complete!'
-                          : 'Beautiful work!'
+                          ? l10n.testFocusComplete
+                          : l10n.beautifulWork
                     : controller.isBreakSession
-                    ? 'Time to breathe'
-                    : 'Ready to focus?',
+                    ? l10n.timeToBreathe
+                    : l10n.readyToFocus,
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
@@ -54,11 +57,11 @@ class FocusScreen extends StatelessWidget {
               Text(
                 controller.showCelebration
                     ? controller.testPreviewActive
-                          ? 'Fast-forwarded time used the real progression rules.'
-                          : 'Your sanctuary grew a little calmer.'
+                          ? l10n.testProgressRules
+                          : l10n.sanctuaryGrew
                     : controller.isBreakSession
-                    ? 'Your focus is safe. Take a gentle pause.'
-                    : 'Settle in and give one thing your full attention.',
+                    ? l10n.focusSafe
+                    : l10n.settleIn,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -103,8 +106,8 @@ class FocusScreen extends StatelessWidget {
                     ),
                     label: Text(
                       controller.testMode
-                          ? 'Complete focus now'
-                          : _primaryLabel(controller.timerStatus),
+                          ? l10n.completeFocusNow
+                          : _primaryLabel(l10n, controller.timerStatus),
                     ),
                   ),
                 ),
@@ -115,7 +118,7 @@ class FocusScreen extends StatelessWidget {
                       : controller.resetTimer,
                   icon: const Icon(Icons.refresh_rounded),
                   label: Text(
-                    controller.isBreakSession ? 'End break' : 'Reset timer',
+                    controller.isBreakSession ? l10n.endBreak : l10n.resetTimer,
                   ),
                 ),
                 if (!controller.testMode &&
@@ -124,9 +127,7 @@ class FocusScreen extends StatelessWidget {
                   TextButton.icon(
                     onPressed: controller.startBreak,
                     icon: const Icon(Icons.coffee_outlined),
-                    label: Text(
-                      'Take a ${controller.shortBreakMinutes} min break',
-                    ),
+                    label: Text(l10n.takeBreak(controller.shortBreakMinutes)),
                   ),
                 const SizedBox(height: 22),
                 if (controller.focusReminders &&
@@ -141,15 +142,11 @@ class FocusScreen extends StatelessWidget {
                       color: AppColors.sageSoft.withValues(alpha: .26),
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(Icons.notifications_active_outlined),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'A gentle reminder: one small focus session is enough to begin.',
-                          ),
-                        ),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(l10n.gentleReminder)),
                       ],
                     ),
                   ),
@@ -180,13 +177,17 @@ class FocusScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Today’s gentle goal',
+                              l10n.todaysGentleGoal,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${controller.formatMinutes(controller.todayMinutes)} of '
-                              '${controller.formatMinutes(controller.dailyGoalMinutes)}',
+                              l10n.durationOf(
+                                l10n.formatDuration(controller.todayMinutes),
+                                l10n.formatDuration(
+                                  controller.dailyGoalMinutes,
+                                ),
+                              ),
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Theme.of(
@@ -222,11 +223,12 @@ class FocusScreen extends StatelessWidget {
     _ => Icons.play_arrow_rounded,
   };
 
-  static String _primaryLabel(FocusTimerStatus status) => switch (status) {
-    FocusTimerStatus.running => 'Pause',
-    FocusTimerStatus.paused => 'Resume',
-    _ => 'Start focus',
-  };
+  static String _primaryLabel(AppLocalizations l10n, FocusTimerStatus status) =>
+      switch (status) {
+        FocusTimerStatus.running => l10n.pause,
+        FocusTimerStatus.paused => l10n.resume,
+        _ => l10n.startFocus,
+      };
 }
 
 class _AccountProtectionCard extends StatelessWidget {
@@ -264,12 +266,12 @@ class _AccountProtectionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Keep your progress safe',
+                      context.l10n.keepProgressSafe,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Guest progress stays on this device. Sign in to keep your focus history, rewards, and room after a reinstall or device change.',
+                      context.l10n.guestProgressPrompt,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -290,8 +292,8 @@ class _AccountProtectionCard extends StatelessWidget {
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: Text(
               controller.accountFeaturesAvailable
-                  ? 'Protect my progress'
-                  : 'Open account settings',
+                  ? context.l10n.protectMyProgress
+                  : context.l10n.openAccountSettings,
             ),
           ),
         ],
@@ -319,7 +321,7 @@ class _CraftPreview extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Your sanctuary collection is complete',
+              context.l10n.collectionComplete,
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
@@ -365,7 +367,7 @@ class _CraftPreview extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Crafting ${item.name}',
+              context.l10n.craftingItem(context.l10n.decorationName(item)),
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
@@ -377,7 +379,11 @@ class _CraftPreview extends StatelessWidget {
             ),
             const SizedBox(height: 7),
             Text(
-              '$shownMinutes / ${item.unlockMinutes} focused minutes • stage ${stage + 1}/5',
+              context.l10n.craftStage(
+                shownMinutes,
+                item.unlockMinutes,
+                stage + 1,
+              ),
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
@@ -406,8 +412,8 @@ class _TimerRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Focus timer $time',
-      value: '${(progress * 100).round()} percent complete',
+      label: context.l10n.focusTimerSemantics(time),
+      value: context.l10n.percentComplete((progress * 100).round()),
       child: SizedBox(
         width: 276,
         height: 276,
@@ -446,16 +452,16 @@ class _TimerRing extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   testPreview
-                      ? 'TEST PREVIEW'
+                      ? context.l10n.testPreview
                       : isBreak
                       ? status == FocusTimerStatus.paused
-                            ? 'BREAK PAUSED'
-                            : 'SHORT BREAK'
+                            ? context.l10n.breakPaused
+                            : context.l10n.shortBreak
                       : status == FocusTimerStatus.running
-                      ? 'FOCUSING'
+                      ? context.l10n.focusing
                       : status == FocusTimerStatus.paused
-                      ? 'PAUSED'
-                      : 'FOCUS SESSION',
+                      ? context.l10n.paused
+                      : context.l10n.focusSession,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     letterSpacing: 1.4,
@@ -489,7 +495,7 @@ class _TestModePanel extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  'Test Mode',
+                  context.l10n.testMode,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -501,8 +507,11 @@ class _TestModePanel extends StatelessWidget {
           ),
           Text(
             controller.testPreviewActive
-                ? '${controller.testElapsedMinutes} of ${controller.activeSessionMinutes} minutes previewed'
-                : 'Fast-forward focus time while keeping the real production, claim, badge, and inventory rules.',
+                ? context.l10n.minutesPreviewed(
+                    controller.testElapsedMinutes,
+                    controller.activeSessionMinutes,
+                  )
+                : context.l10n.testModeBody,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -514,7 +523,7 @@ class _TestModePanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => controller.advanceTestFocus(5),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const FittedBox(child: Text('Advance 5 min')),
+                  label: FittedBox(child: Text(context.l10n.advanceMinutes(5))),
                 ),
               ),
               const SizedBox(width: 8),
@@ -522,14 +531,16 @@ class _TestModePanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => controller.advanceTestFocus(10),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const FittedBox(child: Text('Advance 10 min')),
+                  label: FittedBox(
+                    child: Text(context.l10n.advanceMinutes(10)),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Completed test sessions are saved exactly like normal focus sessions.',
+            context.l10n.testSessionsSaved,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.terracotta,
               fontWeight: FontWeight.w700,
@@ -565,13 +576,13 @@ class _CelebrationCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   controller.testPreviewActive
-                      ? 'Test session complete'
-                      : 'Session complete',
+                      ? context.l10n.testSessionComplete
+                      : context.l10n.sessionComplete,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '+${controller.lastRewardMinutes} focus minutes',
+                  context.l10n.focusMinutesReward(controller.lastRewardMinutes),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                   ),
@@ -579,10 +590,22 @@ class _CelebrationCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   reward == null
-                      ? 'Your focus minutes were saved. Keep going to finish the current item.'
+                      ? context.l10n.minutesSaved
                       : reward.kind == PendingRewardKind.craftedItem
-                      ? '${decorationCatalog.firstWhere((item) => item.id == reward.itemId).name} is ready to claim.'
-                      : '${dailyDecorationCatalog.firstWhere((item) => item.id == reward.itemId).name} came from today’s gentle goal.',
+                      ? context.l10n.itemReadyToClaim(
+                          context.l10n.decorationName(
+                            decorationCatalog.firstWhere(
+                              (item) => item.id == reward.itemId,
+                            ),
+                          ),
+                        )
+                      : context.l10n.itemFromGoal(
+                          context.l10n.collectibleName(
+                            dailyDecorationCatalog.firstWhere(
+                              (item) => item.id == reward.itemId,
+                            ),
+                          ),
+                        ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 22),
@@ -595,19 +618,23 @@ class _CelebrationCard extends StatelessWidget {
                         shape: const StadiumBorder(),
                       ),
                       icon: Icon(Icons.add_home_work_outlined),
-                      label: Text('Claim & Place'),
+                      label: Text(context.l10n.claimAndPlace),
                     ),
                   ),
                   if (hasReward) ...[
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () => controller.claimNextReward(place: false),
-                      child: const Text('Claim for later'),
+                      child: Text(context.l10n.claimForLater),
                     ),
                   ],
                   if (controller.pendingRewards.length > 1)
                     Text(
-                      '${controller.pendingRewards.length - 1} more reward${controller.pendingRewards.length == 2 ? '' : 's'} waiting',
+                      controller.pendingRewards.length == 2
+                          ? context.l10n.oneMoreRewardWaiting
+                          : context.l10n.moreRewardsWaiting(
+                              controller.pendingRewards.length - 1,
+                            ),
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                 ] else
@@ -616,8 +643,8 @@ class _CelebrationCard extends StatelessWidget {
                     style: FilledButton.styleFrom(shape: const StadiumBorder()),
                     child: Text(
                       controller.isBreakSession
-                          ? 'Continue break'
-                          : 'Begin another session',
+                          ? context.l10n.continueBreak
+                          : context.l10n.beginAnotherSession,
                     ),
                   ),
               ],

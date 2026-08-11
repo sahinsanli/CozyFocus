@@ -270,6 +270,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('clean install stays English on a Turkish device locale', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localeTestValue = const Locale('tr');
+    addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.restore();
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to focus?'), findsOneWidget);
+    expect(find.text('Odaklanmaya hazır mısın?'), findsNothing);
+  });
+
+  testWidgets(
+    'Turkish applies instantly, survives restore, and keeps sound names English',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+      await tester.pumpWidget(CozyFocusApp(controller: controller));
+      await tester.pumpAndSettle();
+
+      await controller.setLanguageCode('tr');
+      await tester.pumpAndSettle();
+      expect(find.text('Odaklanmaya hazır mısın?'), findsOneWidget);
+      expect(find.text('Odak'), findsOneWidget);
+      expect(find.text('Oda'), findsOneWidget);
+
+      await tester.tap(find.text('Sesler'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ortam\nSesleri'), findsOneWidget);
+      expect(find.text('Rainy Night'), findsOneWidget);
+      expect(find.text('Soft Piano'), findsOneWidget);
+
+      final restored = AppController(preferences);
+      await restored.restore();
+      expect(restored.languageCode, 'tr');
+    },
+  );
+
+  testWidgets(
+    'Turkish settings expose 8 hour goal and 90 minute focus without overflow',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+      await controller.setLanguageCode('tr');
+      await controller.setDailyGoal(480);
+      await controller.setDefaultFocusMinutes(90);
+
+      await tester.pumpWidget(CozyFocusApp(controller: controller));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Ayarlar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('8 sa'), findsOneWidget);
+      expect(find.text('1 sa 30 dk'), findsOneWidget);
+      expect(find.text('Dil'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('room decorations stay in their exclusive canonical homes', (
     tester,
   ) async {

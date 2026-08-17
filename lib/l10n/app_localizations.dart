@@ -200,6 +200,60 @@ abstract class AppLocalizations {
   /// **'Make it yours. Customize your room with plants, furniture, and calming sounds. Ready to start your journey?'**
   String get onboardingSanctuaryBody;
 
+  /// No description provided for @onboardingRhythmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Your Focus Rhythm'**
+  String get onboardingRhythmTitle;
+
+  /// No description provided for @onboardingRhythmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a pace that feels calm and realistic. You can change these anytime in Settings.'**
+  String get onboardingRhythmBody;
+
+  /// No description provided for @onboardingDailyGoalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How much focused time would feel meaningful each day?'**
+  String get onboardingDailyGoalHint;
+
+  /// No description provided for @onboardingFocusDurationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the length of a typical focus session.'**
+  String get onboardingFocusDurationHint;
+
+  /// No description provided for @onboardingBreakDurationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a little space to pause and recharge.'**
+  String get onboardingBreakDurationHint;
+
+  /// No description provided for @chooseSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose {setting}'**
+  String chooseSetting(Object setting);
+
+  /// No description provided for @selectedSettingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{setting}: {duration}. Tap to change.'**
+  String selectedSettingSemantics(Object duration, Object setting);
+
+  /// No description provided for @saveAndStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & Start'**
+  String get saveAndStart;
+
+  /// No description provided for @onboardingSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your preferences could not be saved. Try again.'**
+  String get onboardingSaveFailed;
+
   /// No description provided for @skip.
   ///
   /// In en, this message translates to:
@@ -1135,6 +1189,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Privacy Policy'**
   String get privacyPolicy;
+
+  /// No description provided for @termsOfUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use'**
+  String get termsOfUse;
+
+  /// No description provided for @accountDeletionInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deletion information'**
+  String get accountDeletionInfo;
 
   /// No description provided for @support.
   ///

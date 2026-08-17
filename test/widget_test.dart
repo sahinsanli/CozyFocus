@@ -60,12 +60,90 @@ void main() {
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     expect(find.text('Your Personal Sanctuary'), findsOneWidget);
-    expect(find.text('Get Started'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Set Your Focus Rhythm'), findsOneWidget);
+    expect(find.text('Save & Start'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-daily-goal')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preference-option-360')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('onboarding-focus-duration')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preference-option-75')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('onboarding-break-duration')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preference-option-15')));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     expect(completed, isTrue);
+    expect(controller.dailyGoalMinutes, 360);
+    expect(controller.defaultFocusMinutes, 75);
+    expect(controller.shortBreakMinutes, 15);
     expect(find.text('Ready to focus?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('onboarding can be skipped without changing preferences', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    var completed = false;
+
+    await tester.pumpWidget(
+      CozyFocusApp(
+        controller: controller,
+        showLaunchExperience: true,
+        onboardingCompleted: false,
+        onOnboardingComplete: () async => completed = true,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('splash-begin')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('onboarding-skip')));
+    await tester.pumpAndSettle();
+
+    expect(completed, isTrue);
+    expect(controller.dailyGoalMinutes, 120);
+    expect(controller.defaultFocusMinutes, 25);
+    expect(controller.shortBreakMinutes, 5);
+    expect(find.text('Ready to focus?'), findsOneWidget);
+  });
+
+  testWidgets('Turkish preference page fits a narrow screen', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.setLanguageCode('tr');
+
+    await tester.pumpWidget(
+      CozyFocusApp(
+        controller: controller,
+        showLaunchExperience: true,
+        onboardingCompleted: false,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('splash-begin')));
+    await tester.pumpAndSettle();
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(find.byKey(const Key('onboarding-next')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('Odak Ritmini Ayarla'), findsOneWidget);
+    expect(find.text('Kaydet ve Başla'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

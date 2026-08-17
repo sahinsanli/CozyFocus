@@ -271,6 +271,18 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const Divider(height: 1),
                       _LinkRow(
+                        icon: Icons.description_outlined,
+                        title: l10n.termsOfUse,
+                        onTap: () => _openPage('terms'),
+                      ),
+                      const Divider(height: 1),
+                      _LinkRow(
+                        icon: Icons.person_remove_outlined,
+                        title: l10n.accountDeletionInfo,
+                        onTap: () => _openPage('delete-account'),
+                      ),
+                      const Divider(height: 1),
+                      _LinkRow(
                         icon: Icons.support_agent_rounded,
                         title: l10n.support,
                         onTap: () => _openPage('support'),

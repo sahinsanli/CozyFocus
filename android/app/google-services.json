@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "463304727815-dkc95tj8qkpfulsnmmtu9mfgh899tn3i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sahinsanli.cozyfocus",
+            "certificate_hash": "e49ed5d7c9e129194c855d224ed00330901ac11e"
+          }
+        },
+        {
           "client_id": "463304727815-k30kuq3camkuf8kh5uueir490goo2130.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -37,6 +45,13 @@
             {
               "client_id": "463304727815-k30kuq3camkuf8kh5uueir490goo2130.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "463304727815-1rrhfnjcmrbpmbq23b8dnoes42sv88c3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cozyfocus.cozyFocus"
+              }
             }
           ]
         }

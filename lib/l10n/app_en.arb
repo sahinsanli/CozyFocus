@@ -17,6 +17,15 @@
   "onboardingProgressBody": "Every focused minute helps you unlock new decorations for your room. Build your perfect sanctuary as you reach your goals.",
   "onboardingSanctuaryTitle": "Your Personal Sanctuary",
   "onboardingSanctuaryBody": "Make it yours. Customize your room with plants, furniture, and calming sounds. Ready to start your journey?",
+  "onboardingRhythmTitle": "Set Your Focus Rhythm",
+  "onboardingRhythmBody": "Choose a pace that feels calm and realistic. You can change these anytime in Settings.",
+  "onboardingDailyGoalHint": "How much focused time would feel meaningful each day?",
+  "onboardingFocusDurationHint": "Choose the length of a typical focus session.",
+  "onboardingBreakDurationHint": "Leave a little space to pause and recharge.",
+  "chooseSetting": "Choose {setting}",
+  "selectedSettingSemantics": "{setting}: {duration}. Tap to change.",
+  "saveAndStart": "Save & Start",
+  "onboardingSaveFailed": "Your preferences could not be saved. Try again.",
   "skip": "Skip",
   "next": "Next",
   "getStarted": "Get Started",
@@ -173,6 +182,8 @@
   "aboutCozyFocus": "About Cozy Focus",
   "aboutBody": "Cozy Focus • Version 1.0.0\nA calm, local-first productivity sanctuary.",
   "privacyPolicy": "Privacy Policy",
+  "termsOfUse": "Terms of Use",
+  "accountDeletionInfo": "Account deletion information",
   "support": "Support",
   "accountSyncTitle": "Account & Sync",
   "sanctuaryProtected": "Your sanctuary is protected",
@@ -265,4 +276,3 @@
   "badgeZenKeeperName": "Zen Keeper",
   "badgeZenKeeperDescription": "Reach 600 total focus minutes."
 }
-

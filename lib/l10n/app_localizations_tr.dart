@@ -63,6 +63,41 @@ class AppLocalizationsTr extends AppLocalizations {
       'Onu kendine göre düzenle. Odanı bitkiler, mobilyalar ve sakinleştirici seslerle kişiselleştir. Yolculuğuna başlamaya hazır mısın?';
 
   @override
+  String get onboardingRhythmTitle => 'Odak Ritmini Ayarla';
+
+  @override
+  String get onboardingRhythmBody =>
+      'Sakin ve gerçekçi hissettiren bir tempo seç. Bu ayarları daha sonra istediğin zaman değiştirebilirsin.';
+
+  @override
+  String get onboardingDailyGoalHint =>
+      'Her gün ne kadar odaklanmak senin için anlamlı olur?';
+
+  @override
+  String get onboardingFocusDurationHint =>
+      'Tipik bir odak seansının uzunluğunu seç.';
+
+  @override
+  String get onboardingBreakDurationHint =>
+      'Durup yenilenmek için kendine biraz alan bırak.';
+
+  @override
+  String chooseSetting(Object setting) {
+    return '$setting seç';
+  }
+
+  @override
+  String selectedSettingSemantics(Object duration, Object setting) {
+    return '$setting: $duration. Değiştirmek için dokun.';
+  }
+
+  @override
+  String get saveAndStart => 'Kaydet ve Başla';
+
+  @override
+  String get onboardingSaveFailed => 'Tercihlerin kaydedilemedi. Tekrar dene.';
+
+  @override
   String get skip => 'Atla';
 
   @override
@@ -597,6 +632,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Gizlilik Politikası';
+
+  @override
+  String get termsOfUse => 'Kullanım Koşulları';
+
+  @override
+  String get accountDeletionInfo => 'Hesap silme bilgileri';
 
   @override
   String get support => 'Destek';

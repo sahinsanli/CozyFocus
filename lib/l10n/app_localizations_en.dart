@@ -63,6 +63,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'Make it yours. Customize your room with plants, furniture, and calming sounds. Ready to start your journey?';
 
   @override
+  String get onboardingRhythmTitle => 'Set Your Focus Rhythm';
+
+  @override
+  String get onboardingRhythmBody =>
+      'Choose a pace that feels calm and realistic. You can change these anytime in Settings.';
+
+  @override
+  String get onboardingDailyGoalHint =>
+      'How much focused time would feel meaningful each day?';
+
+  @override
+  String get onboardingFocusDurationHint =>
+      'Choose the length of a typical focus session.';
+
+  @override
+  String get onboardingBreakDurationHint =>
+      'Leave a little space to pause and recharge.';
+
+  @override
+  String chooseSetting(Object setting) {
+    return 'Choose $setting';
+  }
+
+  @override
+  String selectedSettingSemantics(Object duration, Object setting) {
+    return '$setting: $duration. Tap to change.';
+  }
+
+  @override
+  String get saveAndStart => 'Save & Start';
+
+  @override
+  String get onboardingSaveFailed =>
+      'Your preferences could not be saved. Try again.';
+
+  @override
   String get skip => 'Skip';
 
   @override
@@ -596,6 +632,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get termsOfUse => 'Terms of Use';
+
+  @override
+  String get accountDeletionInfo => 'Account deletion information';
 
   @override
   String get support => 'Support';

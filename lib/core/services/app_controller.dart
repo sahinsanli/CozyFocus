@@ -33,6 +33,18 @@ enum AccountErrorKind {
 enum AudioErrorKind { playback, volume }
 
 class AppController extends ChangeNotifier {
+  static const onboardingDailyGoalOptions = <int>[
+    60,
+    90,
+    120,
+    180,
+    240,
+    360,
+    480,
+  ];
+  static const onboardingFocusDurationOptions = <int>[15, 25, 45, 60, 75, 90];
+  static const onboardingBreakDurationOptions = <int>[5, 10, 15];
+
   AppController(
     SharedPreferences preferences, {
     AudioService? audioService,
@@ -1512,6 +1524,49 @@ class AppController extends ChangeNotifier {
     shortBreakMinutes = value;
     await _persistProgress();
     notifyListeners();
+  }
+
+  Future<void> applyOnboardingPreferences({
+    required int dailyGoalMinutes,
+    required int focusDurationMinutes,
+    required int breakDurationMinutes,
+  }) async {
+    _validateOnboardingPreference(
+      value: dailyGoalMinutes,
+      allowedValues: onboardingDailyGoalOptions,
+      name: 'dailyGoalMinutes',
+    );
+    _validateOnboardingPreference(
+      value: focusDurationMinutes,
+      allowedValues: onboardingFocusDurationOptions,
+      name: 'focusDurationMinutes',
+    );
+    _validateOnboardingPreference(
+      value: breakDurationMinutes,
+      allowedValues: onboardingBreakDurationOptions,
+      name: 'breakDurationMinutes',
+    );
+
+    this.dailyGoalMinutes = dailyGoalMinutes;
+    defaultFocusMinutes = focusDurationMinutes;
+    shortBreakMinutes = breakDurationMinutes;
+    if (timerStatus == FocusTimerStatus.idle) {
+      activeSessionMinutes = focusDurationMinutes;
+      remainingSeconds = focusDurationMinutes * 60;
+      _timerEndEpochMs = null;
+    }
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  static void _validateOnboardingPreference({
+    required int value,
+    required List<int> allowedValues,
+    required String name,
+  }) {
+    if (!allowedValues.contains(value)) {
+      throw ArgumentError.value(value, name, 'Unsupported onboarding value');
+    }
   }
 
   void _syncLegacyProgressModels() {

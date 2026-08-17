@@ -6,21 +6,100 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function validUser(uid) {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'email', 'isAnonymous', 'providers', 'updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && (request.resource.data.email == null
+          || request.resource.data.email is string)
+        && request.resource.data.isAnonymous is bool
+        && request.resource.data.providers is list
+        && request.resource.data.providers.size() <= 10
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validSettings(settings) {
+      return settings is map
+        && settings.keys().hasOnly([
+          'darkMode', 'focusReminders', 'autoStartBreaks',
+          'dailyGoalMinutes', 'defaultFocusMinutes', 'shortBreakMinutes',
+          'sleepTimerMinutes'
+        ])
+        && settings.darkMode is bool
+        && settings.focusReminders is bool
+        && settings.autoStartBreaks is bool
+        && settings.dailyGoalMinutes is int
+        && settings.dailyGoalMinutes >= 1
+        && settings.dailyGoalMinutes <= 1440
+        && settings.defaultFocusMinutes is int
+        && settings.defaultFocusMinutes >= 1
+        && settings.defaultFocusMinutes <= 1440
+        && settings.shortBreakMinutes is int
+        && settings.shortBreakMinutes >= 1
+        && settings.shortBreakMinutes <= 180
+        && settings.sleepTimerMinutes is int
+        && settings.sleepTimerMinutes >= 1
+        && settings.sleepTimerMinutes <= 480;
+    }
+
+    function validProgressDocument() {
+      let data = request.resource.data;
+      let progress = data.progress;
+      return data.keys().hasOnly(['progress', 'updatedAt'])
+        && data.updatedAt is timestamp
+        && progress is map
+        && progress.keys().hasOnly([
+          'schemaVersion', 'username', 'profileAvatarId', 'settings',
+          'dailyMinutes', 'selectedDecorationIds', 'decorationPositions',
+          'craftProgress', 'inventory', 'pendingRewards', 'roomPlacements',
+          'badges', 'dailyReward'
+        ])
+        && progress.schemaVersion is int
+        && progress.schemaVersion == 3
+        && progress.username is string
+        && progress.username.size() > 0
+        && progress.username.size() <= 80
+        && progress.profileAvatarId is string
+        && progress.profileAvatarId.size() <= 40
+        && validSettings(progress.settings)
+        && progress.dailyMinutes is map
+        && progress.selectedDecorationIds is list
+        && progress.selectedDecorationIds.size() <= 100
+        && progress.decorationPositions is map
+        && progress.craftProgress is map
+        && progress.inventory is map
+        && progress.pendingRewards is list
+        && progress.pendingRewards.size() <= 100
+        && progress.roomPlacements is map
+        && progress.badges is map
+        && progress.dailyReward is map;
+    }
+
+    function validFocusSession() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['minutes', 'completedAt', 'createdAt'])
+        && data.minutes is int
+        && data.minutes > 0
+        && data.minutes <= 1440
+        && data.completedAt is timestamp
+        && data.createdAt is timestamp;
+    }
+
     match /users/{uid} {
-      allow read, create, update, delete: if owns(uid);
+      allow read, delete: if owns(uid);
+      allow create, update: if owns(uid) && validUser(uid);
 
       match /state/{stateId} {
-        allow read, create, update, delete: if owns(uid)
-          && stateId == 'progress';
+        allow read, delete: if owns(uid) && stateId == 'progress';
+        allow create, update: if owns(uid)
+          && stateId == 'progress'
+          && validProgressDocument();
       }
 
       match /focusSessions/{sessionId} {
         allow read, delete: if owns(uid);
-        allow create, update: if owns(uid)
-          && request.resource.data.minutes is int
-          && request.resource.data.minutes > 0
-          && request.resource.data.minutes <= 1440
-          && request.resource.data.completedAt is timestamp;
+        allow create, update: if owns(uid) && validFocusSession();
       }
     }
 

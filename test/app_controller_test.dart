@@ -157,6 +157,63 @@ void main() {
     },
   );
 
+  test('onboarding preferences are applied together and persist', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await controller.applyOnboardingPreferences(
+      dailyGoalMinutes: 360,
+      focusDurationMinutes: 75,
+      breakDurationMinutes: 15,
+    );
+
+    expect(controller.dailyGoalMinutes, 360);
+    expect(controller.defaultFocusMinutes, 75);
+    expect(controller.shortBreakMinutes, 15);
+    expect(controller.activeSessionMinutes, 75);
+    expect(controller.remainingSeconds, 75 * 60);
+
+    final restored = AppController(preferences);
+    await restored.restore();
+    expect(restored.dailyGoalMinutes, 360);
+    expect(restored.defaultFocusMinutes, 75);
+    expect(restored.shortBreakMinutes, 15);
+  });
+
+  test('onboarding preferences do not reset an active timer', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.startOrToggleTimer();
+    final activeMinutes = controller.activeSessionMinutes;
+    final remainingSeconds = controller.remainingSeconds;
+
+    await controller.applyOnboardingPreferences(
+      dailyGoalMinutes: 240,
+      focusDurationMinutes: 90,
+      breakDurationMinutes: 10,
+    );
+
+    expect(controller.timerStatus, FocusTimerStatus.running);
+    expect(controller.activeSessionMinutes, activeMinutes);
+    expect(controller.remainingSeconds, remainingSeconds);
+    expect(controller.defaultFocusMinutes, 90);
+  });
+
+  test('onboarding preferences reject unsupported values', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await expectLater(
+      controller.applyOnboardingPreferences(
+        dailyGoalMinutes: 30,
+        focusDurationMinutes: 25,
+        breakDurationMinutes: 5,
+      ),
+      throwsArgumentError,
+    );
+    expect(controller.dailyGoalMinutes, 120);
+  });
+
   test('an elapsed running timer is safely recorded on restore', () async {
     SharedPreferences.setMockInitialValues({
       'timerStatus': FocusTimerStatus.running.name,

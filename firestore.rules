@@ -43,6 +43,59 @@ service cloud.firestore {
         && settings.sleepTimerMinutes <= 480;
     }
 
+    function validRitualSounds(sounds) {
+      return sounds is map
+        && sounds.keys().hasOnly(['rain', 'fire', 'forest', 'piano'])
+        && sounds.size() <= 2
+        && (!sounds.keys().hasAny(['rain'])
+          || (sounds.rain is number && sounds.rain > 0 && sounds.rain <= 1))
+        && (!sounds.keys().hasAny(['fire'])
+          || (sounds.fire is number && sounds.fire > 0 && sounds.fire <= 1))
+        && (!sounds.keys().hasAny(['forest'])
+          || (sounds.forest is number && sounds.forest > 0 && sounds.forest <= 1))
+        && (!sounds.keys().hasAny(['piano'])
+          || (sounds.piano is number && sounds.piano > 0 && sounds.piano <= 1));
+    }
+
+    function validRitual(ritual) {
+      return ritual is map
+        && ritual.keys().hasOnly([
+          'id', 'templateKey', 'customName', 'focusMinutes', 'breakMinutes',
+          'soundVolumes'
+        ])
+        && ritual.id is string
+        && ritual.id.size() > 0
+        && ritual.id.size() <= 64
+        && (ritual.templateKey == null
+          || ritual.templateKey in ['study', 'reading', 'deepFocus'])
+        && (ritual.customName == null
+          || (ritual.customName is string
+            && ritual.customName.size() > 0
+            && ritual.customName.size() <= 30))
+        && ritual.focusMinutes in [15, 25, 45, 60, 75, 90]
+        && ritual.breakMinutes in [5, 10, 15]
+        && validRitualSounds(ritual.soundVolumes);
+    }
+
+    function validFocusRituals(collection) {
+      return collection is map
+        && collection.keys().hasOnly([
+          'items', 'selectedRitualId', 'updatedAtEpochMs'
+        ])
+        && collection.items is list
+        && collection.items.size() <= 5
+        && (collection.selectedRitualId == null
+          || (collection.selectedRitualId is string
+            && collection.selectedRitualId.size() <= 64))
+        && collection.updatedAtEpochMs is int
+        && collection.updatedAtEpochMs >= 0
+        && (collection.items.size() < 1 || validRitual(collection.items[0]))
+        && (collection.items.size() < 2 || validRitual(collection.items[1]))
+        && (collection.items.size() < 3 || validRitual(collection.items[2]))
+        && (collection.items.size() < 4 || validRitual(collection.items[3]))
+        && (collection.items.size() < 5 || validRitual(collection.items[4]));
+    }
+
     function validProgressDocument() {
       let data = request.resource.data;
       let progress = data.progress;
@@ -53,10 +106,10 @@ service cloud.firestore {
           'schemaVersion', 'username', 'profileAvatarId', 'settings',
           'dailyMinutes', 'selectedDecorationIds', 'decorationPositions',
           'craftProgress', 'inventory', 'pendingRewards', 'roomPlacements',
-          'badges', 'dailyReward'
+          'badges', 'dailyReward', 'focusRituals'
         ])
         && progress.schemaVersion is int
-        && progress.schemaVersion == 3
+        && progress.schemaVersion == 4
         && progress.username is string
         && progress.username.size() > 0
         && progress.username.size() <= 80
@@ -73,7 +126,8 @@ service cloud.firestore {
         && progress.pendingRewards.size() <= 100
         && progress.roomPlacements is map
         && progress.badges is map
-        && progress.dailyReward is map;
+        && progress.dailyReward is map
+        && validFocusRituals(progress.focusRituals);
     }
 
     function validFocusSession() {

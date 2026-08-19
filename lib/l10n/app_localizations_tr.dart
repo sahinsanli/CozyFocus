@@ -927,4 +927,103 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get badgeZenKeeperDescription => 'Toplam 600 odak dakikasına ulaş.';
+
+  @override
+  String get focusRitual => 'Odak Ritüeli';
+
+  @override
+  String get manageRituals => 'Ritüelleri yönet';
+
+  @override
+  String get defaultFocus => 'Varsayılan Odak';
+
+  @override
+  String get defaultFocusDescription =>
+      'Odak ve Mola ayarlarını mevcut ses karışımıyla kullanır.';
+
+  @override
+  String get ritualStudy => 'Çalışma';
+
+  @override
+  String get ritualReading => 'Okuma';
+
+  @override
+  String get ritualDeepFocus => 'Derin Odak';
+
+  @override
+  String ritualTimeSummary(Object breakDuration, Object focusDuration) {
+    return '$focusDuration odak · $breakDuration mola';
+  }
+
+  @override
+  String get ritualLocked =>
+      'Ritüeller yalnızca odak sayacı hazırken değiştirilebilir.';
+
+  @override
+  String get newRitual => 'Yeni ritüel';
+
+  @override
+  String get editRitual => 'Ritüeli düzenle';
+
+  @override
+  String get createRitual => 'Ritüel oluştur';
+
+  @override
+  String get deleteRitual => 'Ritüeli sil';
+
+  @override
+  String deleteRitualQuestion(Object name) {
+    return '$name silinsin mi?';
+  }
+
+  @override
+  String get deleteRitualBody =>
+      'Bu ritüel eşitlenen koleksiyonundan kaldırılacak.';
+
+  @override
+  String get maxFiveRituals => 'En fazla beş ritüel saklayabilirsin.';
+
+  @override
+  String get ritualName => 'Ritüel adı';
+
+  @override
+  String get focusDuration => 'Odak süresi';
+
+  @override
+  String get breakDuration => 'Mola süresi';
+
+  @override
+  String get ambienceMix => 'Ortam sesi karışımı';
+
+  @override
+  String get chooseUpToTwoSounds =>
+      'En fazla iki ses seç. Sesler yalnızca odak başladığında çalar.';
+
+  @override
+  String get silentRitual => 'Sessiz ritüel';
+
+  @override
+  String get saveRitual => 'Ritüeli kaydet';
+
+  @override
+  String get ritualNameRequired => 'Bir ritüel adı gir.';
+
+  @override
+  String get ritualNameTooLong => 'En fazla 30 karakter kullan.';
+
+  @override
+  String get maxTwoSounds => 'Bir ritüelde en fazla iki ses kullanılabilir.';
+
+  @override
+  String soundVolume(Object percent, Object sound) {
+    return '$sound · %$percent';
+  }
+
+  @override
+  String ritualAudioWarning(Object sounds) {
+    return 'Odak başladı ancak şu sesler çalınamadı: $sounds';
+  }
+
+  @override
+  String get selected => 'Seçili';
 }

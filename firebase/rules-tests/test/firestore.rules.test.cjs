@@ -25,7 +25,7 @@ let testEnv;
 function validProgress() {
   return {
     progress: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       username: 'Test User',
       profileAvatarId: 'moonleaf',
       settings: {
@@ -46,6 +46,20 @@ function validProgress() {
       roomPlacements: {},
       badges: {},
       dailyReward: {},
+      focusRituals: {
+        items: [
+          {
+            id: 'study',
+            templateKey: 'study',
+            customName: null,
+            focusMinutes: 45,
+            breakMinutes: 10,
+            soundVolumes: {rain: 0.45, piano: 0.3},
+          },
+        ],
+        selectedRitualId: 'study',
+        updatedAtEpochMs: 1,
+      },
     },
     updatedAt: Timestamp.now(),
   };
@@ -114,6 +128,36 @@ describe('Cozy Focus Firestore rules', () => {
     invalid.progress.settings.testMode = true;
     await assertFails(
       setDoc(doc(db, 'users/owner/state/progress'), invalid),
+    );
+  });
+
+  it('rejects invalid ritual limits, sounds, and legacy cloud schema', async () => {
+    const db = testEnv.authenticatedContext('owner').firestore();
+    const tooMany = validProgress();
+    tooMany.progress.focusRituals.items = Array.from({length: 6}, (_, index) => ({
+      id: `ritual-${index}`,
+      templateKey: null,
+      customName: `Ritual ${index}`,
+      focusMinutes: 25,
+      breakMinutes: 5,
+      soundVolumes: {},
+    }));
+    await assertFails(
+      setDoc(doc(db, 'users/owner/state/progress'), tooMany),
+    );
+
+    const unsupportedSound = validProgress();
+    unsupportedSound.progress.focusRituals.items[0].soundVolumes = {
+      cafe: 0.5,
+    };
+    await assertFails(
+      setDoc(doc(db, 'users/owner/state/progress'), unsupportedSound),
+    );
+
+    const legacy = validProgress();
+    legacy.progress.schemaVersion = 3;
+    await assertFails(
+      setDoc(doc(db, 'users/owner/state/progress'), legacy),
     );
   });
 

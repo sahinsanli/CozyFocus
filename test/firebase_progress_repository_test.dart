@@ -1,4 +1,5 @@
 import 'package:cozy_focus/core/models/app_progress.dart';
+import 'package:cozy_focus/core/models/focus_ritual.dart';
 import 'package:cozy_focus/core/services/firebase_progress_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,5 +82,40 @@ void main() {
     expect(merged.pendingRewards, hasLength(1));
     expect(merged.badges['first_focus']?.earnedAt, earnedAt);
     expect(merged.badges['first_focus']?.celebrationSeen, isTrue);
+  });
+
+  test('newer ritual collection wins as one synchronized value', () {
+    const localRituals = FocusRitualCollection(
+      rituals: [
+        FocusRitual(
+          id: 'local',
+          customName: 'Local',
+          focusMinutes: 25,
+          breakMinutes: 5,
+        ),
+      ],
+      selectedRitualId: 'local',
+      updatedAtEpochMs: 200,
+    );
+    const cloudRituals = FocusRitualCollection(
+      rituals: [
+        FocusRitual(
+          id: 'cloud',
+          customName: 'Cloud',
+          focusMinutes: 45,
+          breakMinutes: 10,
+        ),
+      ],
+      selectedRitualId: 'cloud',
+      updatedAtEpochMs: 100,
+    );
+
+    final merged = ProgressMerger.merge(
+      const AppProgressV2(focusRituals: localRituals),
+      const AppProgressV2(focusRituals: cloudRituals),
+    );
+
+    expect(merged.focusRituals.selectedRitualId, 'local');
+    expect(merged.focusRituals.rituals.single.id, 'local');
   });
 }

@@ -7,6 +7,7 @@ import '../../core/assets/app_assets.dart';
 import '../../core/assets/atlas_sprite.dart';
 import '../../core/models/app_progress.dart';
 import '../../core/models/decoration_item.dart';
+import '../../core/models/sound_item.dart';
 import '../../core/services/app_controller.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/design_tokens.dart';
@@ -15,6 +16,7 @@ import '../../core/widgets/cozy_card.dart';
 import '../settings/settings_screen.dart';
 import '../../l10n/localization_extensions.dart';
 import '../../l10n/app_localizations.dart';
+import 'focus_ritual_widgets.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -73,6 +75,8 @@ class FocusScreen extends StatelessWidget {
               if (controller.showCelebration)
                 _CelebrationCard(controller: controller)
               else ...[
+                FocusRitualCard(controller: controller),
+                const SizedBox(height: 24),
                 _TimerRing(
                   progress: controller.timerProgress,
                   time: time,
@@ -91,7 +95,7 @@ class FocusScreen extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: controller.testMode
                         ? controller.completeTestFocus
-                        : controller.startOrToggleTimer,
+                        : () => _handlePrimaryAction(context, controller),
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -127,7 +131,9 @@ class FocusScreen extends StatelessWidget {
                   TextButton.icon(
                     onPressed: controller.startBreak,
                     icon: const Icon(Icons.coffee_outlined),
-                    label: Text(l10n.takeBreak(controller.shortBreakMinutes)),
+                    label: Text(
+                      l10n.takeBreak(controller.preparedBreakMinutes),
+                    ),
                   ),
                 const SizedBox(height: 22),
                 if (controller.focusReminders &&
@@ -229,6 +235,26 @@ class FocusScreen extends StatelessWidget {
         FocusTimerStatus.paused => l10n.resume,
         _ => l10n.startFocus,
       };
+
+  static Future<void> _handlePrimaryAction(
+    BuildContext context,
+    AppController controller,
+  ) async {
+    final result = await controller.startPreparedFocus();
+    if (!context.mounted || !result.hasFailures) return;
+    final names = result.failedSoundIds
+        .map(
+          (id) => soundCatalog
+              .where((sound) => sound.id == id)
+              .map((sound) => sound.name)
+              .firstOrNull,
+        )
+        .whereType<String>()
+        .join(', ');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.ritualAudioWarning(names))),
+    );
+  }
 }
 
 class _AccountProtectionCard extends StatelessWidget {

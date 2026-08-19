@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../core/models/badge_definition.dart';
 import '../core/models/decoration_item.dart';
+import '../core/models/focus_ritual.dart';
 import '../core/services/app_controller.dart';
 import 'app_localizations.dart';
 
@@ -10,6 +11,25 @@ extension LocalizationContext on BuildContext {
 }
 
 extension CozyLocalization on AppLocalizations {
+  String formatRitualTimeSummary({
+    required int focusMinutes,
+    required int breakMinutes,
+  }) => ritualTimeSummary(
+    formatDuration(breakMinutes),
+    formatDuration(focusMinutes),
+  );
+
+  String focusRitualName(FocusRitual ritual) {
+    final custom = ritual.customName?.trim();
+    if (custom != null && custom.isNotEmpty) return custom;
+    return switch (ritual.templateKey) {
+      'study' => ritualStudy,
+      'reading' => ritualReading,
+      'deepFocus' => ritualDeepFocus,
+      _ => ritual.id,
+    };
+  }
+
   String formatDuration(int totalMinutes) {
     if (totalMinutes < 60) return minutesShort(totalMinutes);
     final hours = totalMinutes ~/ 60;

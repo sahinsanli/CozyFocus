@@ -261,6 +261,11 @@ class ProgressMerger {
       pendingRewards: rewards.values.toList(),
       roomPlacements: {...local.roomPlacements, ...cloud.roomPlacements},
       badges: badges,
+      focusRituals:
+          cloud.focusRituals.updatedAtEpochMs >=
+              local.focusRituals.updatedAtEpochMs
+          ? cloud.focusRituals
+          : local.focusRituals,
       dailyReward: DailyRewardState(
         completedDateKey: _latestKey(
           local.dailyReward.completedDateKey,

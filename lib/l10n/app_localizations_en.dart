@@ -927,4 +927,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get badgeZenKeeperDescription => 'Reach 600 total focus minutes.';
+
+  @override
+  String get focusRitual => 'Focus Ritual';
+
+  @override
+  String get manageRituals => 'Manage rituals';
+
+  @override
+  String get defaultFocus => 'Default Focus';
+
+  @override
+  String get defaultFocusDescription =>
+      'Uses your Focus and Break settings with the current mixer.';
+
+  @override
+  String get ritualStudy => 'Study';
+
+  @override
+  String get ritualReading => 'Reading';
+
+  @override
+  String get ritualDeepFocus => 'Deep Focus';
+
+  @override
+  String ritualTimeSummary(Object breakDuration, Object focusDuration) {
+    return '$focusDuration focus · $breakDuration break';
+  }
+
+  @override
+  String get ritualLocked =>
+      'Rituals can be changed when the focus timer is idle.';
+
+  @override
+  String get newRitual => 'New ritual';
+
+  @override
+  String get editRitual => 'Edit ritual';
+
+  @override
+  String get createRitual => 'Create ritual';
+
+  @override
+  String get deleteRitual => 'Delete ritual';
+
+  @override
+  String deleteRitualQuestion(Object name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get deleteRitualBody =>
+      'This ritual will be removed from your synced collection.';
+
+  @override
+  String get maxFiveRituals => 'You can keep up to five rituals.';
+
+  @override
+  String get ritualName => 'Ritual name';
+
+  @override
+  String get focusDuration => 'Focus duration';
+
+  @override
+  String get breakDuration => 'Break duration';
+
+  @override
+  String get ambienceMix => 'Ambience mix';
+
+  @override
+  String get chooseUpToTwoSounds =>
+      'Choose up to two sounds. They begin only when focus starts.';
+
+  @override
+  String get silentRitual => 'Silent ritual';
+
+  @override
+  String get saveRitual => 'Save ritual';
+
+  @override
+  String get ritualNameRequired => 'Enter a ritual name.';
+
+  @override
+  String get ritualNameTooLong => 'Use 30 characters or fewer.';
+
+  @override
+  String get maxTwoSounds => 'A ritual can use up to two sounds.';
+
+  @override
+  String soundVolume(Object percent, Object sound) {
+    return '$sound · $percent%';
+  }
+
+  @override
+  String ritualAudioWarning(Object sounds) {
+    return 'Focus started, but these sounds could not play: $sounds';
+  }
+
+  @override
+  String get selected => 'Selected';
 }

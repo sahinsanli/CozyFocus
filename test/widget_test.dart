@@ -1,6 +1,7 @@
 import 'package:cozy_focus/app.dart';
 import 'package:cozy_focus/core/assets/app_assets.dart';
 import 'package:cozy_focus/core/models/decoration_item.dart';
+import 'package:cozy_focus/core/models/focus_ritual.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
 import 'package:cozy_focus/core/services/progress_repository.dart';
 import 'package:cozy_focus/core/services/audio_service.dart';
@@ -346,6 +347,75 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('focus rituals manage localized templates on a narrow phone', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('focus-ritual-card')));
+    await tester.tap(find.byKey(const Key('focus-ritual-card')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Default Focus'), findsWidgets);
+    expect(find.text('Study'), findsOneWidget);
+    expect(find.text('Reading'), findsOneWidget);
+    expect(find.text('Deep Focus'), findsOneWidget);
+    expect(find.text('45 min focus · 10 min break'), findsOneWidget);
+    expect(find.text('25 min focus · 5 min break'), findsOneWidget);
+    expect(find.text('1 h 30 min focus · 15 min break'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byIcon(Icons.close_rounded).first);
+    await tester.pumpAndSettle();
+    await controller.setLanguageCode('tr');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('focus-ritual-card')));
+    await tester.tap(find.byKey(const Key('focus-ritual-card')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Varsayılan Odak'), findsWidgets);
+    expect(find.text('Çalışma'), findsOneWidget);
+    expect(find.text('Okuma'), findsOneWidget);
+    expect(find.text('Derin Odak'), findsOneWidget);
+    expect(find.text('45 dk odak · 10 dk mola'), findsOneWidget);
+    expect(find.text('25 dk odak · 5 dk mola'), findsOneWidget);
+    expect(find.text('1 sa 30 dk odak · 15 dk mola'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('custom ritual names stay unchanged when language changes', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.upsertFocusRitual(
+      const FocusRitual(
+        id: 'my-flow',
+        customName: 'My Flow',
+        focusMinutes: 60,
+        breakMinutes: 10,
+        soundVolumes: {'forest': .5},
+      ),
+    );
+    await controller.selectFocusRitual('my-flow');
+
+    await tester.pumpWidget(CozyFocusApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('focus-ritual-card')));
+    expect(find.text('My Flow'), findsOneWidget);
+
+    await controller.setLanguageCode('tr');
+    await tester.pumpAndSettle();
+    expect(find.text('My Flow'), findsOneWidget);
   });
 
   testWidgets('clean install stays English on a Turkish device locale', (

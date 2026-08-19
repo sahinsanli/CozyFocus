@@ -1,3 +1,5 @@
+import 'focus_ritual.dart';
+
 enum InventoryStatus { locked, crafting, pendingClaim, owned, placed }
 
 enum PendingRewardKind { craftedItem, dailyDecoration }
@@ -235,6 +237,9 @@ class TimerSnapshot {
     this.activeSessionMinutes = 25,
     this.endEpochMs,
     this.sessionId,
+    this.activeRitualId,
+    this.sessionBreakMinutes,
+    this.ritualAudioActive = false,
   });
 
   final String status;
@@ -243,6 +248,9 @@ class TimerSnapshot {
   final int activeSessionMinutes;
   final int? endEpochMs;
   final String? sessionId;
+  final String? activeRitualId;
+  final int? sessionBreakMinutes;
+  final bool ritualAudioActive;
 
   Map<String, dynamic> toJson() => {
     'status': status,
@@ -251,6 +259,9 @@ class TimerSnapshot {
     'activeSessionMinutes': activeSessionMinutes,
     'endEpochMs': endEpochMs,
     'sessionId': sessionId,
+    'activeRitualId': activeRitualId,
+    'sessionBreakMinutes': sessionBreakMinutes,
+    'ritualAudioActive': ritualAudioActive,
   };
 
   factory TimerSnapshot.fromJson(Map<String, dynamic> json) => TimerSnapshot(
@@ -260,6 +271,9 @@ class TimerSnapshot {
     activeSessionMinutes: (json['activeSessionMinutes'] as num?)?.toInt() ?? 25,
     endEpochMs: (json['endEpochMs'] as num?)?.toInt(),
     sessionId: json['sessionId'] as String?,
+    activeRitualId: json['activeRitualId'] as String?,
+    sessionBreakMinutes: (json['sessionBreakMinutes'] as num?)?.toInt(),
+    ritualAudioActive: json['ritualAudioActive'] as bool? ?? false,
   );
 }
 
@@ -286,9 +300,10 @@ class AppProgressV2 {
     this.roomPlacements = const {},
     this.badges = const {},
     this.dailyReward = const DailyRewardState(),
+    this.focusRituals = const FocusRitualCollection(),
   });
 
-  static const schemaVersion = 3;
+  static const schemaVersion = 4;
 
   final String username;
   final String profileAvatarId;
@@ -311,6 +326,7 @@ class AppProgressV2 {
   final Map<String, RoomPlacement> roomPlacements;
   final Map<String, BadgeProgress> badges;
   final DailyRewardState dailyReward;
+  final FocusRitualCollection focusRituals;
 
   Map<String, dynamic> toJson() => {
     'schemaVersion': schemaVersion,
@@ -341,11 +357,12 @@ class AppProgressV2 {
     ),
     'badges': badges.map((key, value) => MapEntry(key, value.toJson())),
     'dailyReward': dailyReward.toJson(),
+    'focusRituals': focusRituals.toJson(),
   };
 
   factory AppProgressV2.fromJson(Map<String, dynamic> json) {
     final version = (json['schemaVersion'] as num?)?.toInt();
-    if (version != 2 && version != schemaVersion) {
+    if (version != 2 && version != 3 && version != schemaVersion) {
       throw FormatException('Unsupported progress schema: $version');
     }
     final settings = _stringMap(json['settings']);
@@ -375,6 +392,9 @@ class AppProgressV2 {
       roomPlacements: _typedMap(json['roomPlacements'], RoomPlacement.fromJson),
       badges: _typedMap(json['badges'], BadgeProgress.fromJson),
       dailyReward: DailyRewardState.fromJson(_stringMap(json['dailyReward'])),
+      focusRituals: json['focusRituals'] is Map
+          ? FocusRitualCollection.fromJson(_stringMap(json['focusRituals']))
+          : const FocusRitualCollection(),
     );
   }
 }

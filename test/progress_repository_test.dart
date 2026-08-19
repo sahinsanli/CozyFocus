@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cozy_focus/core/models/app_progress.dart';
 import 'package:cozy_focus/core/models/decoration_item.dart';
+import 'package:cozy_focus/core/models/focus_ritual.dart';
 import 'package:cozy_focus/core/services/progress_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,6 +78,10 @@ void main() {
         claimedItemIds: ['candle'],
         placedItemIds: ['candle'],
         placementInitialized: true,
+      ),
+      focusRituals: const FocusRitualCollection(
+        selectedRitualId: 'study',
+        updatedAtEpochMs: 42,
       ),
     );
 
@@ -231,10 +236,13 @@ void main() {
     'schema version two snapshots upgrade without losing progress',
     () async {
       final preferences = await SharedPreferences.getInstance();
-      final json = const AppProgressV2(
-        username: 'Version two user',
-        dailyMinutes: {'2026-08-10': 45},
-      ).toJson()..['schemaVersion'] = 2;
+      final json =
+          const AppProgressV2(
+              username: 'Version two user',
+              dailyMinutes: {'2026-08-10': 45},
+            ).toJson()
+            ..['schemaVersion'] = 2
+            ..remove('focusRituals');
       await preferences.setString(
         SharedPreferencesProgressRepository.storageKey,
         jsonEncode(json),
@@ -246,6 +254,28 @@ void main() {
 
       expect(restored.username, 'Version two user');
       expect(restored.dailyMinutes['2026-08-10'], 45);
+      expect(restored.focusRituals.rituals, hasLength(3));
     },
   );
+
+  test('schema version three snapshots gain starter rituals', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final json = const AppProgressV2(username: 'Version three user').toJson()
+      ..['schemaVersion'] = 3
+      ..remove('focusRituals');
+    await preferences.setString(
+      SharedPreferencesProgressRepository.storageKey,
+      jsonEncode(json),
+    );
+
+    final restored = await SharedPreferencesProgressRepository(
+      preferences,
+    ).load();
+
+    expect(restored.focusRituals.rituals.map((ritual) => ritual.id), [
+      'study',
+      'reading',
+      'deep-focus',
+    ]);
+  });
 }

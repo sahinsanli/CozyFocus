@@ -1747,6 +1747,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reach 600 total focus minutes.'**
   String get badgeZenKeeperDescription;
+
+  /// No description provided for @focusRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus Ritual'**
+  String get focusRitual;
+
+  /// No description provided for @manageRituals.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage rituals'**
+  String get manageRituals;
+
+  /// No description provided for @defaultFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Focus'**
+  String get defaultFocus;
+
+  /// No description provided for @defaultFocusDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses your Focus and Break settings with the current mixer.'**
+  String get defaultFocusDescription;
+
+  /// No description provided for @ritualStudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Study'**
+  String get ritualStudy;
+
+  /// No description provided for @ritualReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get ritualReading;
+
+  /// No description provided for @ritualDeepFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep Focus'**
+  String get ritualDeepFocus;
+
+  /// No description provided for @ritualTimeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{focusDuration} focus · {breakDuration} break'**
+  String ritualTimeSummary(Object breakDuration, Object focusDuration);
+
+  /// No description provided for @ritualLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Rituals can be changed when the focus timer is idle.'**
+  String get ritualLocked;
+
+  /// No description provided for @newRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'New ritual'**
+  String get newRitual;
+
+  /// No description provided for @editRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit ritual'**
+  String get editRitual;
+
+  /// No description provided for @createRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Create ritual'**
+  String get createRitual;
+
+  /// No description provided for @deleteRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete ritual'**
+  String get deleteRitual;
+
+  /// No description provided for @deleteRitualQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String deleteRitualQuestion(Object name);
+
+  /// No description provided for @deleteRitualBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This ritual will be removed from your synced collection.'**
+  String get deleteRitualBody;
+
+  /// No description provided for @maxFiveRituals.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep up to five rituals.'**
+  String get maxFiveRituals;
+
+  /// No description provided for @ritualName.
+  ///
+  /// In en, this message translates to:
+  /// **'Ritual name'**
+  String get ritualName;
+
+  /// No description provided for @focusDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus duration'**
+  String get focusDuration;
+
+  /// No description provided for @breakDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Break duration'**
+  String get breakDuration;
+
+  /// No description provided for @ambienceMix.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambience mix'**
+  String get ambienceMix;
+
+  /// No description provided for @chooseUpToTwoSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose up to two sounds. They begin only when focus starts.'**
+  String get chooseUpToTwoSounds;
+
+  /// No description provided for @silentRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent ritual'**
+  String get silentRitual;
+
+  /// No description provided for @saveRitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Save ritual'**
+  String get saveRitual;
+
+  /// No description provided for @ritualNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a ritual name.'**
+  String get ritualNameRequired;
+
+  /// No description provided for @ritualNameTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 30 characters or fewer.'**
+  String get ritualNameTooLong;
+
+  /// No description provided for @maxTwoSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'A ritual can use up to two sounds.'**
+  String get maxTwoSounds;
+
+  /// No description provided for @soundVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'{sound} · {percent}%'**
+  String soundVolume(Object percent, Object sound);
+
+  /// No description provided for @ritualAudioWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus started, but these sounds could not play: {sounds}'**
+  String ritualAudioWarning(Object sounds);
+
+  /// No description provided for @selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get selected;
 }
 
 class _AppLocalizationsDelegate

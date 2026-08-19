@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cozy_focus/core/models/app_progress.dart';
 import 'package:cozy_focus/core/models/decoration_item.dart';
+import 'package:cozy_focus/core/models/focus_ritual.dart';
 import 'package:cozy_focus/core/services/app_controller.dart';
 import 'package:cozy_focus/core/services/audio_service.dart';
 import 'package:cozy_focus/core/services/progress_repository.dart';
@@ -96,6 +97,136 @@ void main() {
 
     await controller.resetTimer();
     expect(controller.timerStatus, FocusTimerStatus.idle);
+  });
+
+  test(
+    'focus ritual defaults migrate and CRUD respects five item limit',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+      await controller.restore();
+
+      expect(controller.focusRituals.rituals.map((item) => item.id), [
+        'study',
+        'reading',
+        'deep-focus',
+      ]);
+      await controller.upsertFocusRitual(
+        const FocusRitual(
+          id: 'writing',
+          customName: 'Writing',
+          focusMinutes: 60,
+          breakMinutes: 10,
+          soundVolumes: {'rain': .4},
+        ),
+      );
+      await controller.upsertFocusRitual(
+        const FocusRitual(
+          id: 'planning',
+          customName: 'Planning',
+          focusMinutes: 25,
+          breakMinutes: 5,
+        ),
+      );
+      await expectLater(
+        controller.upsertFocusRitual(
+          const FocusRitual(
+            id: 'sixth',
+            customName: 'Sixth',
+            focusMinutes: 25,
+            breakMinutes: 5,
+          ),
+        ),
+        throwsStateError,
+      );
+
+      await controller.selectFocusRitual('writing');
+      expect(controller.preparedFocusMinutes, 60);
+      await controller.deleteFocusRitual('writing');
+      expect(controller.selectedFocusRitual, isNull);
+      expect(controller.remainingSeconds, controller.defaultFocusMinutes * 60);
+    },
+  );
+
+  test(
+    'ritual selection prepares but does not change global settings',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final controller = AppController(preferences);
+      await controller.selectFocusRitual('study');
+
+      expect(controller.defaultFocusMinutes, 25);
+      expect(controller.shortBreakMinutes, 5);
+      expect(controller.activeSessionMinutes, 45);
+      expect(controller.remainingSeconds, 45 * 60);
+      expect(controller.activeSoundCount, 0);
+    },
+  );
+
+  test(
+    'ritual start replaces mixer and partial audio failure is reported',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final audio = _TrackingAudioService(
+        {'rain', 'fire', 'forest', 'piano'},
+        failOnPlay: {'piano'},
+      );
+      final controller = AppController(preferences, audioService: audio);
+      await controller.setTestMode(false);
+      await controller.toggleSound('fire');
+      await controller.selectFocusRitual('study');
+
+      final result = await controller.startPreparedFocus();
+
+      expect(result.failedSoundIds, ['piano']);
+      expect(audio.playing, {'rain'});
+      expect(audio.volumes['rain'], .45);
+      expect(controller.soundVolumes['rain'], .45);
+      expect(controller.soundVolumes['fire'], 0);
+      expect(controller.timerStatus, FocusTimerStatus.running);
+
+      await controller.startPreparedFocus();
+      expect(controller.timerStatus, FocusTimerStatus.paused);
+      expect(audio.playing, {'rain'});
+
+      await controller.resetTimer();
+      expect(audio.playing, isEmpty);
+    },
+  );
+
+  test(
+    'ritual clears sleep timer and its break length drives auto break',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final audio = _TrackingAudioService({'rain', 'fire', 'forest', 'piano'});
+      final controller = AppController(preferences, audioService: audio);
+      await controller.setTestMode(false);
+      await controller.toggleSound('fire');
+      expect(await controller.startSleepTimer(), isTrue);
+      await controller.selectFocusRitual('study');
+      await controller.startPreparedFocus();
+      expect(controller.sleepTimerActive, isFalse);
+
+      controller.testMode = true;
+      await controller.setAutoStartBreaks(true);
+      await controller.completeTestFocus();
+      expect(controller.isBreakSession, isTrue);
+      expect(controller.activeSessionMinutes, 10);
+      expect(controller.remainingSeconds, 10 * 60);
+      expect(audio.playing, isEmpty);
+    },
+  );
+
+  test('ritual selection and editing are locked during active focus', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final controller = AppController(preferences);
+    await controller.setTestMode(false);
+    await controller.selectFocusRitual('reading');
+    await controller.startPreparedFocus();
+
+    expect(controller.canEditFocusRituals, isFalse);
+    await controller.selectFocusRitual('study');
+    expect(controller.focusRituals.selectedRitualId, 'reading');
   });
 
   test('settings and progress restore from local persistence', () async {
@@ -539,9 +670,10 @@ void main() {
 }
 
 class _TrackingAudioService implements AudioService {
-  _TrackingAudioService(this.supported);
+  _TrackingAudioService(this.supported, {this.failOnPlay = const {}});
 
   final Set<String> supported;
+  final Set<String> failOnPlay;
   final Set<String> playing = {};
   final Map<String, double> volumes = {};
 
@@ -550,6 +682,7 @@ class _TrackingAudioService implements AudioService {
 
   @override
   Future<void> play(String id, double volume) async {
+    if (failOnPlay.contains(id)) throw StateError('Simulated failure: $id');
     playing.add(id);
     volumes[id] = volume;
   }

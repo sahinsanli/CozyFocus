@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/decoration_item.dart';
 import '../models/app_progress.dart';
 import '../models/badge_definition.dart';
+import '../models/focus_ritual.dart';
 import '../models/sound_item.dart';
 import 'account_service.dart';
 import 'audio_service.dart';
@@ -31,6 +32,13 @@ enum AccountErrorKind {
 }
 
 enum AudioErrorKind { playback, volume }
+
+class RitualStartResult {
+  const RitualStartResult({this.failedSoundIds = const []});
+
+  final List<String> failedSoundIds;
+  bool get hasFailures => failedSoundIds.isNotEmpty;
+}
 
 class AppController extends ChangeNotifier {
   static const onboardingDailyGoalOptions = <int>[
@@ -71,6 +79,9 @@ class AppController extends ChangeNotifier {
   Timer? _sleepTimerTicker;
   int? _sleepTimerEndEpochMs;
   String? _activeSessionId;
+  String? _activeRitualId;
+  int? _activeSessionBreakMinutes;
+  bool _ritualAudioActive = false;
 
   bool accountBusy = false;
   AccountErrorKind? accountErrorKind;
@@ -127,8 +138,29 @@ class AppController extends ChangeNotifier {
   int sleepTimerRemainingSeconds = 0;
   bool sleepTimerActive = false;
   bool sleepTimerJustFinished = false;
+  FocusRitualCollection focusRituals = const FocusRitualCollection();
 
   bool get isBreakSession => timerSessionKind == TimerSessionKind.shortBreak;
+
+  FocusRitual? get selectedFocusRitual {
+    final selectedId = focusRituals.selectedRitualId;
+    if (selectedId == null) return null;
+    return focusRituals.rituals
+        .where((ritual) => ritual.id == selectedId)
+        .firstOrNull;
+  }
+
+  bool get canEditFocusRituals =>
+      timerStatus == FocusTimerStatus.idle &&
+      !isBreakSession &&
+      !testPreviewActive &&
+      !showCelebration;
+
+  int get preparedFocusMinutes =>
+      selectedFocusRitual?.focusMinutes ?? defaultFocusMinutes;
+
+  int get preparedBreakMinutes =>
+      selectedFocusRitual?.breakMinutes ?? shortBreakMinutes;
 
   CozyAccount? get account => _accountService?.currentAccount;
   bool get accountFeaturesAvailable => _accountService != null;
@@ -309,6 +341,11 @@ class AppController extends ChangeNotifier {
     remainingSeconds = progress.timer.remainingSeconds;
     _timerEndEpochMs = progress.timer.endEpochMs;
     _activeSessionId = progress.timer.sessionId;
+    _activeRitualId = progress.timer.activeRitualId;
+    _activeSessionBreakMinutes = progress.timer.sessionBreakMinutes;
+    // Ambience is intentionally never auto-resumed after a cold start.
+    _ritualAudioActive = false;
+    focusRituals = _normalizedRitualCollection(progress.focusRituals);
     timerSessionKind =
         TimerSessionKind.values
             .where((kind) => kind.name == progress.timer.sessionKind)
@@ -422,6 +459,9 @@ class AppController extends ChangeNotifier {
       }
     } else if (savedStatus == FocusTimerStatus.paused.name) {
       timerStatus = FocusTimerStatus.paused;
+    } else {
+      activeSessionMinutes = preparedFocusMinutes;
+      remainingSeconds = preparedFocusMinutes * 60;
     }
     // Rewrite legacy room coordinates using the canonical layout during the
     // first restore. Ownership and interaction state remain untouched.
@@ -454,13 +494,157 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> selectFocusRitual(String? id) async {
+    if (!canEditFocusRituals) return;
+    if (id != null && !focusRituals.rituals.any((ritual) => ritual.id == id)) {
+      throw ArgumentError.value(id, 'id', 'Unknown focus ritual');
+    }
+    focusRituals = focusRituals.copyWith(
+      selectedRitualId: id,
+      clearSelection: id == null,
+      updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    timerSessionKind = TimerSessionKind.focus;
+    activeSessionMinutes = preparedFocusMinutes;
+    remainingSeconds = preparedFocusMinutes * 60;
+    timerStatus = FocusTimerStatus.idle;
+    _activeRitualId = null;
+    _activeSessionBreakMinutes = null;
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  Future<void> upsertFocusRitual(FocusRitual ritual) async {
+    if (!canEditFocusRituals) return;
+    final normalized = _validateRitual(ritual);
+    final rituals = [...focusRituals.rituals];
+    final index = rituals.indexWhere((item) => item.id == normalized.id);
+    if (index < 0) {
+      if (rituals.length >= 5) {
+        throw StateError('A maximum of five focus rituals is supported.');
+      }
+      rituals.add(normalized);
+    } else {
+      rituals[index] = normalized;
+    }
+    focusRituals = focusRituals.copyWith(
+      rituals: rituals,
+      updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    if (focusRituals.selectedRitualId == normalized.id) {
+      activeSessionMinutes = normalized.focusMinutes;
+      remainingSeconds = normalized.focusMinutes * 60;
+    }
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  Future<void> deleteFocusRitual(String id) async {
+    if (!canEditFocusRituals) return;
+    final rituals = focusRituals.rituals
+        .where((ritual) => ritual.id != id)
+        .toList();
+    if (rituals.length == focusRituals.rituals.length) return;
+    final wasSelected = focusRituals.selectedRitualId == id;
+    focusRituals = focusRituals.copyWith(
+      rituals: rituals,
+      clearSelection: wasSelected,
+      updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    if (wasSelected) {
+      activeSessionMinutes = defaultFocusMinutes;
+      remainingSeconds = defaultFocusMinutes * 60;
+      _activeRitualId = null;
+      _activeSessionBreakMinutes = null;
+    }
+    await _persistProgress();
+    notifyListeners();
+  }
+
+  Future<RitualStartResult> startPreparedFocus() async {
+    if (timerStatus == FocusTimerStatus.running ||
+        timerStatus == FocusTimerStatus.paused) {
+      await startOrToggleTimer();
+      return const RitualStartResult();
+    }
+    if (!canEditFocusRituals && timerStatus != FocusTimerStatus.complete) {
+      return const RitualStartResult();
+    }
+
+    testPreviewActive = false;
+    showCelebration = false;
+    timerSessionKind = TimerSessionKind.focus;
+    final ritual = selectedFocusRitual;
+    activeSessionMinutes = ritual?.focusMinutes ?? defaultFocusMinutes;
+    remainingSeconds = activeSessionMinutes * 60;
+    _activeRitualId = ritual?.id;
+    _activeSessionBreakMinutes = ritual?.breakMinutes ?? shortBreakMinutes;
+
+    var failedSoundIds = <String>[];
+    if (ritual != null && !testMode) {
+      failedSoundIds = await _applyRitualMix(ritual.soundVolumes);
+      _ritualAudioActive = ritual.soundVolumes.isNotEmpty;
+    } else {
+      _ritualAudioActive = false;
+    }
+
+    timerStatus = FocusTimerStatus.running;
+    _activeSessionId = _newSessionId();
+    _startTicker();
+    await _persistTimer();
+    notifyListeners();
+    return RitualStartResult(failedSoundIds: failedSoundIds);
+  }
+
+  Future<List<String>> _applyRitualMix(
+    Map<String, double> requestedVolumes,
+  ) async {
+    _clearSleepTimerState();
+    sleepTimerJustFinished = false;
+    await _audioService.stopAll();
+    for (final id in soundVolumes.keys) {
+      soundVolumes[id] = 0;
+    }
+
+    final failed = <String>[];
+    for (final entry in requestedVolumes.entries) {
+      if (!_audioService.supports(entry.key)) {
+        failed.add(entry.key);
+        continue;
+      }
+      try {
+        await _audioService.play(entry.key, entry.value);
+        soundVolumes[entry.key] = entry.value;
+      } catch (error, stackTrace) {
+        debugPrint('Ritual ambience ${entry.key} failed: $error\n$stackTrace');
+        failed.add(entry.key);
+      }
+    }
+    if (activeSoundCount >= 2) _evaluateBadges(mixer: true);
+    audioErrorKind = failed.isEmpty ? null : AudioErrorKind.playback;
+    return failed;
+  }
+
+  Future<void> _stopRitualAudio() async {
+    _clearSleepTimerState();
+    sleepTimerJustFinished = false;
+    for (final id in soundVolumes.keys) {
+      soundVolumes[id] = 0;
+    }
+    await _audioService.stopAll();
+    _ritualAudioActive = false;
+  }
+
   Future<void> resetTimer() async {
     _ticker?.cancel();
+    if (_ritualAudioActive) await _stopRitualAudio();
     timerSessionKind = TimerSessionKind.focus;
-    activeSessionMinutes = defaultFocusMinutes;
-    remainingSeconds = defaultFocusMinutes * 60;
+    activeSessionMinutes = preparedFocusMinutes;
+    remainingSeconds = preparedFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
     _activeSessionId = null;
+    _activeRitualId = null;
+    _activeSessionBreakMinutes = null;
     showCelebration = false;
     testPreviewActive = false;
     await _persistTimer();
@@ -477,9 +661,11 @@ class AppController extends ChangeNotifier {
     testPreviewActive = false;
     if (!isBreakSession) {
       timerSessionKind = TimerSessionKind.focus;
-      activeSessionMinutes = defaultFocusMinutes;
-      remainingSeconds = defaultFocusMinutes * 60;
+      activeSessionMinutes = preparedFocusMinutes;
+      remainingSeconds = preparedFocusMinutes * 60;
       timerStatus = FocusTimerStatus.idle;
+      _activeRitualId = null;
+      _activeSessionBreakMinutes = null;
     }
     await _persistTimer();
     notifyListeners();
@@ -490,8 +676,12 @@ class AppController extends ChangeNotifier {
     showCelebration = false;
     testPreviewActive = false;
     timerSessionKind = TimerSessionKind.shortBreak;
-    activeSessionMinutes = shortBreakMinutes;
-    remainingSeconds = shortBreakMinutes * 60;
+    final breakMinutes =
+        _activeSessionBreakMinutes ??
+        selectedFocusRitual?.breakMinutes ??
+        shortBreakMinutes;
+    activeSessionMinutes = breakMinutes;
+    remainingSeconds = breakMinutes * 60;
     timerStatus = FocusTimerStatus.running;
     _activeSessionId = null;
     _startTicker();
@@ -537,6 +727,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _completeSession({bool recordProgress = true}) async {
     _ticker?.cancel();
+    if (_ritualAudioActive) await _stopRitualAudio();
     final minutes = activeSessionMinutes;
     final completedAt = DateTime.now();
     final completedSessionId = _activeSessionId ?? _newSessionId();
@@ -560,12 +751,14 @@ class AppController extends ChangeNotifier {
     if (recordProgress) _syncLegacyProgressModels();
     if (autoStartBreaks) {
       timerSessionKind = TimerSessionKind.shortBreak;
-      activeSessionMinutes = shortBreakMinutes;
-      remainingSeconds = shortBreakMinutes * 60;
+      final breakMinutes = _activeSessionBreakMinutes ?? shortBreakMinutes;
+      activeSessionMinutes = breakMinutes;
+      remainingSeconds = breakMinutes * 60;
       timerStatus = FocusTimerStatus.running;
       _startTicker();
     }
     _activeSessionId = null;
+    _activeRitualId = null;
     await _persistTimer();
     if (recordProgress && _progressRepository is AccountProgressRepository) {
       await (_progressRepository as AccountProgressRepository)
@@ -581,10 +774,12 @@ class AppController extends ChangeNotifier {
   Future<void> _completeBreak() async {
     _ticker?.cancel();
     timerSessionKind = TimerSessionKind.focus;
-    activeSessionMinutes = defaultFocusMinutes;
-    remainingSeconds = defaultFocusMinutes * 60;
+    activeSessionMinutes = preparedFocusMinutes;
+    remainingSeconds = preparedFocusMinutes * 60;
     timerStatus = FocusTimerStatus.idle;
     _activeSessionId = null;
+    _activeRitualId = null;
+    _activeSessionBreakMinutes = null;
     showCelebration = false;
     await _persistTimer();
     unawaited(_playEffect(AppSoundEffect.click));
@@ -601,7 +796,7 @@ class AppController extends ChangeNotifier {
     if (!testMode || showCelebration) return;
     _ticker?.cancel();
     if (!testPreviewActive) {
-      activeSessionMinutes = defaultFocusMinutes;
+      activeSessionMinutes = preparedFocusMinutes;
       remainingSeconds = activeSessionMinutes * 60;
       testPreviewActive = true;
       _activeSessionId ??= _newSessionId();
@@ -634,7 +829,7 @@ class AppController extends ChangeNotifier {
     if (!testMode) return;
     _ticker?.cancel();
     if (!testPreviewActive) {
-      activeSessionMinutes = defaultFocusMinutes;
+      activeSessionMinutes = preparedFocusMinutes;
       remainingSeconds = activeSessionMinutes * 60;
     }
     _activeSessionId ??= _newSessionId();
@@ -1510,7 +1705,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> setDefaultFocusMinutes(int value) async {
     defaultFocusMinutes = value;
-    if (timerStatus == FocusTimerStatus.idle) {
+    if (timerStatus == FocusTimerStatus.idle && selectedFocusRitual == null) {
       activeSessionMinutes = value;
       remainingSeconds = value * 60;
       await _persistTimer();
@@ -1550,7 +1745,7 @@ class AppController extends ChangeNotifier {
     this.dailyGoalMinutes = dailyGoalMinutes;
     defaultFocusMinutes = focusDurationMinutes;
     shortBreakMinutes = breakDurationMinutes;
-    if (timerStatus == FocusTimerStatus.idle) {
+    if (timerStatus == FocusTimerStatus.idle && selectedFocusRitual == null) {
       activeSessionMinutes = focusDurationMinutes;
       remainingSeconds = focusDurationMinutes * 60;
       _timerEndEpochMs = null;
@@ -1567,6 +1762,76 @@ class AppController extends ChangeNotifier {
     if (!allowedValues.contains(value)) {
       throw ArgumentError.value(value, name, 'Unsupported onboarding value');
     }
+  }
+
+  FocusRitualCollection _normalizedRitualCollection(
+    FocusRitualCollection collection,
+  ) {
+    final rituals = <FocusRitual>[];
+    final ids = <String>{};
+    for (final ritual in collection.rituals) {
+      if (rituals.length == 5 || !ids.add(ritual.id)) continue;
+      try {
+        rituals.add(_validateRitual(ritual));
+      } on ArgumentError {
+        ids.remove(ritual.id);
+      }
+    }
+    final selected =
+        rituals.any((ritual) => ritual.id == collection.selectedRitualId)
+        ? collection.selectedRitualId
+        : null;
+    return FocusRitualCollection(
+      rituals: rituals,
+      selectedRitualId: selected,
+      updatedAtEpochMs: collection.updatedAtEpochMs.clamp(0, 1 << 62),
+    );
+  }
+
+  FocusRitual _validateRitual(FocusRitual ritual) {
+    final id = ritual.id.trim();
+    if (id.isEmpty || id.length > 64) {
+      throw ArgumentError.value(ritual.id, 'id', 'Must be 1–64 characters');
+    }
+    final templateKey = ritual.templateKey;
+    if (templateKey != null &&
+        !const {'study', 'reading', 'deepFocus'}.contains(templateKey)) {
+      throw ArgumentError.value(templateKey, 'templateKey');
+    }
+    final customName = ritual.customName?.trim();
+    if ((templateKey == null && (customName == null || customName.isEmpty)) ||
+        (customName != null &&
+            (customName.isEmpty || customName.length > 30))) {
+      throw ArgumentError.value(
+        ritual.customName,
+        'customName',
+        'Must be 1–30 characters',
+      );
+    }
+    if (!focusRitualFocusOptions.contains(ritual.focusMinutes)) {
+      throw ArgumentError.value(ritual.focusMinutes, 'focusMinutes');
+    }
+    if (!focusRitualBreakOptions.contains(ritual.breakMinutes)) {
+      throw ArgumentError.value(ritual.breakMinutes, 'breakMinutes');
+    }
+    if (ritual.soundVolumes.length > 2) {
+      throw ArgumentError.value(ritual.soundVolumes, 'soundVolumes');
+    }
+    for (final entry in ritual.soundVolumes.entries) {
+      if (!focusRitualSoundIds.contains(entry.key) ||
+          entry.value <= 0 ||
+          entry.value > 1) {
+        throw ArgumentError.value(entry, 'soundVolumes');
+      }
+    }
+    return FocusRitual(
+      id: id,
+      templateKey: templateKey,
+      customName: (customName?.isEmpty ?? true) ? null : customName,
+      focusMinutes: ritual.focusMinutes,
+      breakMinutes: ritual.breakMinutes,
+      soundVolumes: Map.unmodifiable(ritual.soundVolumes),
+    );
   }
 
   void _syncLegacyProgressModels() {
@@ -1634,6 +1899,9 @@ class AppController extends ChangeNotifier {
       activeSessionMinutes: activeSessionMinutes,
       endEpochMs: _timerEndEpochMs,
       sessionId: _activeSessionId,
+      activeRitualId: _activeRitualId,
+      sessionBreakMinutes: _activeSessionBreakMinutes,
+      ritualAudioActive: _ritualAudioActive,
     ),
     craftProgress: craftProgress,
     inventory: Map.unmodifiable(inventoryEntries),
@@ -1641,6 +1909,7 @@ class AppController extends ChangeNotifier {
     roomPlacements: Map.unmodifiable(roomPlacements),
     badges: Map.unmodifiable(badgeProgress),
     dailyReward: dailyRewardState,
+    focusRituals: focusRituals,
   );
 
   Future<void> _persistProgress() =>

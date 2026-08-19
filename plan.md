@@ -1,6 +1,6 @@
 # Cozy Focus — Mevcut Durum ve Geliştirme Planı
 
-> Son güncelleme: 17 Ağustos 2026
+> Son güncelleme: 19 Ağustos 2026
 >
 > Ana proje yolu: `/Users/sahinsanli/Desktop/Flutter_App`
 >
@@ -52,6 +52,17 @@
 - [x] Kısa mola süresi ve çalışan auto-start break davranışı mevcut.
 - [x] Focus Reminders ayarı Focus ekranında uygulama içi nazik hatırlatmayı
   açıp kapatıyor.
+- [x] Focus ekranında yeni sekme oluşturmadan çalışan Focus Rituals sistemi
+  mevcut.
+- [x] Study, Reading ve Deep Focus başlangıç ritüelleri; odak/mola süresi ve en
+  fazla iki ambiyans kanalından oluşan düzenlenebilir karışımlar sağlıyor.
+- [x] En fazla beş ritüel oluşturma, düzenleme, silme ve Default Focus'a dönme
+  akışları mevcut.
+- [x] Ritüel seçimi global Focus/Break ayarlarını değiştirmeden idle timer'ı
+  hazırlıyor; sesler yalnızca Start Focus ile başlıyor.
+- [x] Ritüel sesleri mevcut mixer'ın yerini alıyor; kısmi ses hatasında çalışan
+  kanallar ve timer korunuyor, tamamlanma/reset sırasında karışım duruyor.
+- [x] Ritüelin mola süresi manuel ve auto-start break akışlarında kullanılıyor.
 - [ ] Focus Reminders bir Android sistem bildirimi değildir; arka plan/yerel
   bildirim özelliği gerekirse ayrıca geliştirilecek.
 - [ ] Production yayından önce test modunun varsayılanı `false` yapılmalı ve
@@ -150,6 +161,8 @@ Odadaki güncel 12 ürün:
 - [x] Süre, çoğul ve dakika/saat gösterimleri yerelleştiriliyor.
 - [x] Sound Catalog isimleri çevrilmiyor.
 - [x] `Cozy Focus Room` marka adı çevrilmiyor.
+- [x] Yerleşik Focus Ritual adları İngilizce/Türkçe arasında değişiyor; özel
+  ritüel adları ve ambiyans ses adları aynen korunuyor.
 
 ## 4. Veri ve backend
 
@@ -160,6 +173,8 @@ Odadaki güncel 12 ürün:
 - [x] Yerel veriler Firebase UID bazında ayrılıyor.
 - [x] Timer'ın anlık durumu, aktif sesler, sleep timer ve test modu cihazda
   tutuluyor.
+- [x] Timer snapshot aktif ritüel ve oturuma ait mola süresini cihazda tutuyor;
+  aktif ses oynatma durumu buluta gönderilmiyor.
 
 ### 4.2 Firebase
 
@@ -177,9 +192,13 @@ Odadaki güncel 12 ürün:
   - `users/{uid}/state/progress`
   - `users/{uid}/focusSessions/{sessionId}`
 - [x] Firestore yalnızca kullanıcının kendi UID yoluna erişmesine izin veriyor.
-- [x] Beklenen alanlar, temel tipler ve progress schema version 3 kurallarda
+- [x] Beklenen alanlar, temel tipler ve progress schema version 4 kurallarda
   doğrulanıyor.
-- [x] Firestore Rules emülatör testleri mevcut ve 4/4 geçti.
+- [x] Eski v2/v3 kayıtlar okunuyor ve eksik Focus Ritual koleksiyonu üç güvenli
+  başlangıç şablonuyla v4'e taşınıyor.
+- [x] Focus Ritual koleksiyonu en fazla beş kayıtla, koleksiyon seviyesinde
+  last-write-wins olarak Firestore'a eşitleniyor.
+- [x] Firestore Rules emülatör testleri mevcut ve 5/5 geçti.
 - [x] Güncel Firestore Rules gerçek Firebase projesine deploy edildi.
 - [x] Hesap silme; Firestore verisi, Auth hesabı ve kullanıcıya ait yerel veriyi
   siliyor.
@@ -250,9 +269,12 @@ Yayın belgeleri:
 Son uygulama doğrulaması: 17 Ağustos 2026
 
 - [x] `flutter analyze` — sorun yok.
-- [x] `flutter test` — 65/65 test geçti.
+- [x] `flutter test` — 74/74 test geçti.
 - [x] Android debug APK build başarılı.
-- [x] Firestore Rules emulator — 4/4 test geçti.
+- [x] Firestore Rules emulator — 5/5 test geçti (OpenJDK 21).
+- [x] Focus Ritual v4 migration, CRUD/limit, timer/mola, mixer kısmi hata,
+  Firestore merge ve İngilizce/Türkçe dar ekran davranışları test edildi.
+- [x] Focus Ritual schema v4 kuralları `cozyfocus-1ca80` projesine deploy edildi.
 - [x] Rules test bağımlılıkları için `npm audit` — 0 açık.
 - [x] Release AAB build başarılı.
 - [x] AAB imzası upload sertifikasıyla doğrulandı.
@@ -294,14 +316,23 @@ Son uygulama doğrulaması: 17 Ağustos 2026
 
 ## 9. Git çalışma durumu
 
-- Son commit: `1fd483b Add Turkish localization and refresh app icon`.
-- Bu dosya oluşturulurken Play release hazırlıkları, Firestore rule
-  sıkılaştırmaları, yasal ayar bağlantıları, store belgeleri ve store görselleri
-  çalışma alanında **henüz commitlenmemiş/pushlanmamış değişikliklerdir**.
-- [ ] Mevcut çalışma alanı gözden geçirilip tek bir release-preparation commit'i
-  olarak GitHub'a pushlanmalı.
+- Focus Rituals özellik commit'i: `6114245 Add synced focus rituals`.
+- [x] Focus Rituals v4 özelliği commitlendi.
+- [x] Hedef dal `main`, uzak depo `origin`.
 
 ## 10. Değişiklik günlüğü
+
+### 19 Ağustos 2026
+
+- [x] Focus Rituals sistemi; üç başlangıç şablonu, en fazla beş ritüel,
+  düzenleyici, odak/mola hazırlığı ve iki kanallı mixer entegrasyonuyla eklendi.
+- [x] Progress şeması v4'e çıkarıldı; v2/v3 migration ve ritual koleksiyonu
+  last-write-wins Firestore eşitlemesi eklendi.
+- [x] 74 Flutter testi, 5 Firestore Rules emulator testi, analiz ve Android
+  debug build başarıyla tamamlandı.
+- [x] Firestore schema v4 güvenlik kuralları Firebase'e deploy edildi.
+- [x] Ritual özetindeki odak/mola sürelerinin ters gösterimi iki dilde
+  düzeltilip widget testiyle koruma altına alındı.
 
 ### 17 Ağustos 2026
 

@@ -284,7 +284,7 @@ class AppProgressV2 {
     this.darkMode = true,
     this.focusReminders = true,
     this.autoStartBreaks = false,
-    this.testMode = true,
+    this.testMode = false,
     this.dailyGoalMinutes = 120,
     this.defaultFocusMinutes = 25,
     this.shortBreakMinutes = 5,
@@ -372,7 +372,7 @@ class AppProgressV2 {
       darkMode: settings['darkMode'] as bool? ?? true,
       focusReminders: settings['focusReminders'] as bool? ?? true,
       autoStartBreaks: settings['autoStartBreaks'] as bool? ?? false,
-      testMode: settings['testMode'] as bool? ?? true,
+      testMode: settings['testMode'] as bool? ?? false,
       dailyGoalMinutes: (settings['dailyGoalMinutes'] as num?)?.toInt() ?? 120,
       defaultFocusMinutes:
           (settings['defaultFocusMinutes'] as num?)?.toInt() ?? 25,

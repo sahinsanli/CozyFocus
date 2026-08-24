@@ -12,6 +12,15 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('new progress defaults to production-safe test mode off', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final repository = SharedPreferencesProgressRepository(preferences);
+
+    final progress = await repository.load();
+
+    expect(progress.testMode, isFalse);
+  });
+
   test('versioned progress snapshot survives a complete round trip', () async {
     final preferences = await SharedPreferences.getInstance();
     final repository = SharedPreferencesProgressRepository(preferences);

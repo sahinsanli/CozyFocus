@@ -65,9 +65,8 @@
 - [x] Ritüelin mola süresi manuel ve auto-start break akışlarında kullanılıyor.
 - [ ] Focus Reminders bir Android sistem bildirimi değildir; arka plan/yerel
   bildirim özelliği gerekirse ayrıca geliştirilecek.
-- [ ] Production yayından önce test modunun varsayılanı `false` yapılmalı ve
-  kullanıcıya görünen test kontrollerinin kaldırılıp kaldırılmayacağı
-  kararlaştırılmalı.
+- [x] Production yayından önce test modunun varsayılanı `false` yapıldı;
+  test kontrolleri yalnızca debug derlemelerde gösteriliyor.
 
 ### 2.2 Ödül, inventory ve Gentle Goal
 
@@ -301,9 +300,8 @@ Son uygulama doğrulaması: 17 Ağustos 2026
 
 ### P1 — Production temizliği
 
-- [ ] Test modunun varsayılanını kapat.
-- [ ] Test modu kontrollerinin production sürümünde görünmemesini sağla veya
-  bilinçli ürün kararı ver.
+- [x] Test modunun varsayılanını kapat.
+- [x] Test modu kontrollerinin production sürümünde görünmemesini sağla.
 - [ ] Store ekran görüntülerini gerçek release görünümünden al.
 - [ ] Production release öncesi tüm cihaz/servis test matrisini çalıştır.
 
@@ -333,6 +331,11 @@ Son uygulama doğrulaması: 17 Ağustos 2026
 - [x] Firestore schema v4 güvenlik kuralları Firebase'e deploy edildi.
 - [x] Ritual özetindeki odak/mola sürelerinin ters gösterimi iki dilde
   düzeltilip widget testiyle koruma altına alındı.
+
+### 24 Ağustos 2026
+
+- [x] Test modu production build'lerinde zorla kapatıldı; ayarı ve hızlandırma
+  kontrolleri yalnızca debug build'lerinde tutuldu.
 
 ### 17 Ağustos 2026
 

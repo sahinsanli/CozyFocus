@@ -171,7 +171,7 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
       darkMode: _preferences.getBool('darkMode') ?? true,
       focusReminders: _preferences.getBool('focusReminders') ?? true,
       autoStartBreaks: _preferences.getBool('autoStartBreaks') ?? false,
-      testMode: _preferences.getBool('testMode') ?? true,
+      testMode: _preferences.getBool('testMode') ?? false,
       dailyGoalMinutes: _preferences.getInt('dailyGoalMinutes') ?? 120,
       defaultFocusMinutes: defaultFocusMinutes,
       shortBreakMinutes: _preferences.getInt('shortBreakMinutes') ?? 5,

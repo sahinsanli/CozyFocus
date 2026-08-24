@@ -90,7 +90,9 @@ class AppController extends ChangeNotifier {
   bool darkMode = true;
   bool focusReminders = true;
   bool autoStartBreaks = false;
-  bool testMode = true;
+
+  /// Development-only acceleration tools. Never enable these in a release.
+  bool testMode = kDebugMode;
   bool testPreviewActive = false;
   String languageCode = 'en';
   int dailyGoalMinutes = 120;
@@ -332,7 +334,9 @@ class AppController extends ChangeNotifier {
     darkMode = progress.darkMode;
     focusReminders = progress.focusReminders;
     autoStartBreaks = progress.autoStartBreaks;
-    testMode = progress.testMode;
+    // A prior debug build may have persisted this setting. Production builds
+    // must always ignore it, including after an upgrade or a cloud restore.
+    testMode = kDebugMode && progress.testMode;
     dailyGoalMinutes = progress.dailyGoalMinutes;
     defaultFocusMinutes = progress.defaultFocusMinutes;
     shortBreakMinutes = progress.shortBreakMinutes;
@@ -839,6 +843,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setTestMode(bool value) async {
+    if (!kDebugMode) value = false;
     if (testMode == value) return;
     testMode = value;
     if (!value && sleepTimerMinutes == 1) sleepTimerMinutes = 15;

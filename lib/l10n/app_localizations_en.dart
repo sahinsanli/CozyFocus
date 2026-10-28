@@ -296,9 +296,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get off => 'off';
 
   @override
-  String get testFocusComplete => 'Test focus complete!';
-
-  @override
   String get beautifulWork => 'Beautiful work!';
 
   @override
@@ -308,10 +305,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readyToFocus => 'Ready to focus?';
 
   @override
-  String get testProgressRules =>
-      'Fast-forwarded time used the real progression rules.';
-
-  @override
   String get sanctuaryGrew => 'Your sanctuary grew a little calmer.';
 
   @override
@@ -319,9 +312,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settleIn => 'Settle in and give one thing your full attention.';
-
-  @override
-  String get completeFocusNow => 'Complete focus now';
 
   @override
   String get endBreak => 'End break';
@@ -392,9 +382,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get testPreview => 'TEST PREVIEW';
-
-  @override
   String get breakPaused => 'BREAK PAUSED';
 
   @override
@@ -408,30 +395,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get focusSession => 'FOCUS SESSION';
-
-  @override
-  String get testMode => 'Test Mode';
-
-  @override
-  String minutesPreviewed(Object elapsed, Object total) {
-    return '$elapsed of $total minutes previewed';
-  }
-
-  @override
-  String get testModeBody =>
-      'Fast-forward focus time while keeping the real production, claim, badge, and inventory rules.';
-
-  @override
-  String advanceMinutes(Object minutes) {
-    return 'Advance $minutes min';
-  }
-
-  @override
-  String get testSessionsSaved =>
-      'Completed test sessions are saved exactly like normal focus sessions.';
-
-  @override
-  String get testSessionComplete => 'Test session complete';
 
   @override
   String get sessionComplete => 'Session complete';
@@ -606,9 +569,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String autoStartBreaksBody(Object minutes) {
     return 'Start a $minutes min break after focus ends';
   }
-
-  @override
-  String get testModeSettingsBody => 'Preview timers, rewards, and unlocks';
 
   @override
   String get accountAndSync => 'ACCOUNT & SYNC';

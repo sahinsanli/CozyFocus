@@ -180,10 +180,6 @@ class FirebaseProgressRepository
     final payload = progress.toJson();
     payload.remove('soundVolumes');
     payload.remove('timer');
-    final settings = Map<String, dynamic>.from(
-      payload['settings'] as Map<String, dynamic>,
-    )..remove('testMode');
-    payload['settings'] = settings;
     return payload;
   }
 }
@@ -243,7 +239,6 @@ class ProgressMerger {
       darkMode: cloud.darkMode,
       focusReminders: cloud.focusReminders,
       autoStartBreaks: cloud.autoStartBreaks,
-      testMode: local.testMode,
       dailyGoalMinutes: cloud.dailyGoalMinutes,
       defaultFocusMinutes: cloud.defaultFocusMinutes,
       shortBreakMinutes: cloud.shortBreakMinutes,

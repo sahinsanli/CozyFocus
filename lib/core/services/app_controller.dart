@@ -91,9 +91,6 @@ class AppController extends ChangeNotifier {
   bool focusReminders = true;
   bool autoStartBreaks = false;
 
-  /// Development-only acceleration tools. Never enable these in a release.
-  bool testMode = kDebugMode;
-  bool testPreviewActive = false;
   String languageCode = 'en';
   int dailyGoalMinutes = 120;
   int defaultFocusMinutes = 25;
@@ -155,7 +152,6 @@ class AppController extends ChangeNotifier {
   bool get canEditFocusRituals =>
       timerStatus == FocusTimerStatus.idle &&
       !isBreakSession &&
-      !testPreviewActive &&
       !showCelebration;
 
   int get preparedFocusMinutes =>
@@ -334,9 +330,6 @@ class AppController extends ChangeNotifier {
     darkMode = progress.darkMode;
     focusReminders = progress.focusReminders;
     autoStartBreaks = progress.autoStartBreaks;
-    // A prior debug build may have persisted this setting. Production builds
-    // must always ignore it, including after an upgrade or a cloud restore.
-    testMode = kDebugMode && progress.testMode;
     dailyGoalMinutes = progress.dailyGoalMinutes;
     defaultFocusMinutes = progress.defaultFocusMinutes;
     shortBreakMinutes = progress.shortBreakMinutes;
@@ -474,7 +467,6 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> startOrToggleTimer() async {
-    testPreviewActive = false;
     switch (timerStatus) {
       case FocusTimerStatus.idle:
       case FocusTimerStatus.complete:
@@ -575,7 +567,6 @@ class AppController extends ChangeNotifier {
       return const RitualStartResult();
     }
 
-    testPreviewActive = false;
     showCelebration = false;
     timerSessionKind = TimerSessionKind.focus;
     final ritual = selectedFocusRitual;
@@ -585,7 +576,7 @@ class AppController extends ChangeNotifier {
     _activeSessionBreakMinutes = ritual?.breakMinutes ?? shortBreakMinutes;
 
     var failedSoundIds = <String>[];
-    if (ritual != null && !testMode) {
+    if (ritual != null) {
       failedSoundIds = await _applyRitualMix(ritual.soundVolumes);
       _ritualAudioActive = ritual.soundVolumes.isNotEmpty;
     } else {
@@ -650,7 +641,6 @@ class AppController extends ChangeNotifier {
     _activeRitualId = null;
     _activeSessionBreakMinutes = null;
     showCelebration = false;
-    testPreviewActive = false;
     await _persistTimer();
     notifyListeners();
   }
@@ -662,7 +652,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> continueAfterCelebration() async {
     showCelebration = false;
-    testPreviewActive = false;
     if (!isBreakSession) {
       timerSessionKind = TimerSessionKind.focus;
       activeSessionMinutes = preparedFocusMinutes;
@@ -678,7 +667,6 @@ class AppController extends ChangeNotifier {
   Future<void> startBreak() async {
     _ticker?.cancel();
     showCelebration = false;
-    testPreviewActive = false;
     timerSessionKind = TimerSessionKind.shortBreak;
     final breakMinutes =
         _activeSessionBreakMinutes ??
@@ -788,66 +776,6 @@ class AppController extends ChangeNotifier {
     await _persistTimer();
     unawaited(_playEffect(AppSoundEffect.click));
     notifyListeners();
-  }
-
-  int get testElapsedMinutes =>
-      ((activeSessionMinutes * 60 - remainingSeconds) / 60).floor().clamp(
-        0,
-        activeSessionMinutes,
-      );
-
-  Future<void> advanceTestFocus(int minutes) async {
-    if (!testMode || showCelebration) return;
-    _ticker?.cancel();
-    if (!testPreviewActive) {
-      activeSessionMinutes = preparedFocusMinutes;
-      remainingSeconds = activeSessionMinutes * 60;
-      testPreviewActive = true;
-      _activeSessionId ??= _newSessionId();
-    }
-    final previousPreview = _craftPreview;
-    remainingSeconds = (remainingSeconds - minutes * 60).clamp(
-      0,
-      activeSessionMinutes * 60,
-    );
-    if (remainingSeconds == 0) {
-      await _completeSession();
-      return;
-    }
-    timerStatus = FocusTimerStatus.paused;
-    final nextPreview = _craftPreview;
-    final previousStage = _visualStage(previousPreview.ratio);
-    final nextStage = _visualStage(nextPreview.ratio);
-    if (previousPreview.item?.id == nextPreview.item?.id &&
-        nextStage > previousStage &&
-        nextStage < 4) {
-      final item = nextPreview.item;
-      final effect = item == null ? null : _developmentEffectFor(item);
-      if (effect != null) unawaited(_playEffect(effect));
-    }
-    await _persistTimer();
-    notifyListeners();
-  }
-
-  Future<void> completeTestFocus() async {
-    if (!testMode) return;
-    _ticker?.cancel();
-    if (!testPreviewActive) {
-      activeSessionMinutes = preparedFocusMinutes;
-      remainingSeconds = activeSessionMinutes * 60;
-    }
-    _activeSessionId ??= _newSessionId();
-    testPreviewActive = true;
-    remainingSeconds = 0;
-    await _completeSession();
-  }
-
-  Future<void> setTestMode(bool value) async {
-    if (!kDebugMode) value = false;
-    if (testMode == value) return;
-    testMode = value;
-    if (!value && sleepTimerMinutes == 1) sleepTimerMinutes = 15;
-    await resetTimer();
   }
 
   @visibleForTesting
@@ -1317,7 +1245,6 @@ class AppController extends ChangeNotifier {
       }
     }
     showCelebration = pendingRewards.isNotEmpty;
-    if (!showCelebration) testPreviewActive = false;
     await _persistProgress();
     notifyListeners();
   }
@@ -1885,7 +1812,6 @@ class AppController extends ChangeNotifier {
     darkMode: darkMode,
     focusReminders: focusReminders,
     autoStartBreaks: autoStartBreaks,
-    testMode: testMode,
     dailyGoalMinutes: dailyGoalMinutes,
     defaultFocusMinutes: defaultFocusMinutes,
     shortBreakMinutes: shortBreakMinutes,

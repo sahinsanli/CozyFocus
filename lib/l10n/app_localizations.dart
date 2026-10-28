@@ -614,12 +614,6 @@ abstract class AppLocalizations {
   /// **'off'**
   String get off;
 
-  /// No description provided for @testFocusComplete.
-  ///
-  /// In en, this message translates to:
-  /// **'Test focus complete!'**
-  String get testFocusComplete;
-
   /// No description provided for @beautifulWork.
   ///
   /// In en, this message translates to:
@@ -638,12 +632,6 @@ abstract class AppLocalizations {
   /// **'Ready to focus?'**
   String get readyToFocus;
 
-  /// No description provided for @testProgressRules.
-  ///
-  /// In en, this message translates to:
-  /// **'Fast-forwarded time used the real progression rules.'**
-  String get testProgressRules;
-
   /// No description provided for @sanctuaryGrew.
   ///
   /// In en, this message translates to:
@@ -661,12 +649,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settle in and give one thing your full attention.'**
   String get settleIn;
-
-  /// No description provided for @completeFocusNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Complete focus now'**
-  String get completeFocusNow;
 
   /// No description provided for @endBreak.
   ///
@@ -776,12 +758,6 @@ abstract class AppLocalizations {
   /// **'{percent} percent complete'**
   String percentComplete(Object percent);
 
-  /// No description provided for @testPreview.
-  ///
-  /// In en, this message translates to:
-  /// **'TEST PREVIEW'**
-  String get testPreview;
-
   /// No description provided for @breakPaused.
   ///
   /// In en, this message translates to:
@@ -811,42 +787,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'FOCUS SESSION'**
   String get focusSession;
-
-  /// No description provided for @testMode.
-  ///
-  /// In en, this message translates to:
-  /// **'Test Mode'**
-  String get testMode;
-
-  /// No description provided for @minutesPreviewed.
-  ///
-  /// In en, this message translates to:
-  /// **'{elapsed} of {total} minutes previewed'**
-  String minutesPreviewed(Object elapsed, Object total);
-
-  /// No description provided for @testModeBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Fast-forward focus time while keeping the real production, claim, badge, and inventory rules.'**
-  String get testModeBody;
-
-  /// No description provided for @advanceMinutes.
-  ///
-  /// In en, this message translates to:
-  /// **'Advance {minutes} min'**
-  String advanceMinutes(Object minutes);
-
-  /// No description provided for @testSessionsSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Completed test sessions are saved exactly like normal focus sessions.'**
-  String get testSessionsSaved;
-
-  /// No description provided for @testSessionComplete.
-  ///
-  /// In en, this message translates to:
-  /// **'Test session complete'**
-  String get testSessionComplete;
 
   /// No description provided for @sessionComplete.
   ///
@@ -1141,12 +1081,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start a {minutes} min break after focus ends'**
   String autoStartBreaksBody(Object minutes);
-
-  /// No description provided for @testModeSettingsBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Preview timers, rewards, and unlocks'**
-  String get testModeSettingsBody;
 
   /// No description provided for @accountAndSync.
   ///

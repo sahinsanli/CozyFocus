@@ -146,19 +146,16 @@ class SoundsScreen extends StatelessWidget {
                             child: DropdownButton<int>(
                               value: controller.sleepTimerMinutes,
                               dropdownColor: Theme.of(context).cardColor,
-                              items:
-                                  (controller.testMode
-                                          ? const [1, 15, 30, 45, 60]
-                                          : const [15, 30, 45, 60])
-                                      .map(
-                                        (value) => DropdownMenuItem(
-                                          value: value,
-                                          child: Text(
-                                            context.l10n.minutesShort(value),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
+                              items: const [15, 30, 45, 60]
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value,
+                                      child: Text(
+                                        context.l10n.minutesShort(value),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   controller.setSleepTimer(value);

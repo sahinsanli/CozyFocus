@@ -232,9 +232,8 @@ class StatsScreen extends StatelessWidget {
                         title: Text(context.l10n.allDecorationsUnlocked),
                       )
                     else
-                      ...(controller.testMode
-                              ? decorationCatalog
-                              : upcoming.take(3))
+                      ...upcoming
+                          .take(3)
                           .map(
                             (item) => ListTile(
                               dense: true,

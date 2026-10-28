@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -221,18 +220,6 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: controller.setAutoStartBreaks,
                         ),
                       ),
-                      if (kDebugMode) ...[
-                        const Divider(height: 1),
-                        _SettingsRow(
-                          icon: Icons.science_outlined,
-                          title: l10n.testMode,
-                          subtitle: l10n.testModeSettingsBody,
-                          trailing: Switch(
-                            value: controller.testMode,
-                            onChanged: controller.setTestMode,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),

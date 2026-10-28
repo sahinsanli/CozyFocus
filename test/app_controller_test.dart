@@ -31,57 +31,10 @@ void main() {
   test('locked room decorations cannot be selected', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
-    await controller.setTestMode(false);
 
     await controller.toggleDecoration('sleeping_cat');
 
     expect(controller.selectedDecorationIds, isNot(contains('sleeping_cat')));
-  });
-
-  test('test mode fast-forwards checkpoints and saves real progress', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final effects = _TrackingSoundEffectService();
-    final controller = AppController(preferences, soundEffectService: effects);
-    await controller.setDefaultFocusMinutes(15);
-
-    expect(controller.testMode, isTrue);
-    expect(controller.unlockedDecorationCount, 0);
-    await controller.advanceTestFocus(10);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(controller.testPreviewActive, isTrue);
-    expect(controller.testElapsedMinutes, 10);
-    expect(controller.timerStatus, FocusTimerStatus.paused);
-    expect(effects.played, isNot(contains(AppSoundEffect.woodCut)));
-    expect(controller.allTimeMinutes, 0);
-
-    await controller.completeTestFocus();
-    expect(controller.showCelebration, isTrue);
-    expect(effects.played, contains(AppSoundEffect.claimReward));
-    expect(controller.allTimeMinutes, 15);
-    expect(controller.craftProgress.accumulatedMinutes, 15);
-  });
-
-  test('test mode advances to the next crafted item after claim', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final controller = AppController(preferences);
-    await controller.setDefaultFocusMinutes(30);
-
-    await controller.completeTestFocus();
-
-    expect(controller.inventoryStatus('desk'), InventoryStatus.pendingClaim);
-    expect(controller.nextPendingReward?.itemId, 'desk');
-    expect(controller.currentCraftItem?.id, 'chair');
-
-    await controller.claimNextReward(place: false);
-    expect(controller.inventoryStatus('desk'), InventoryStatus.owned);
-    expect(controller.testPreviewActive, isFalse);
-    expect(controller.currentCraftItem?.id, 'chair');
-
-    await controller.advanceTestFocus(10);
-    expect(controller.testElapsedMinutes, 10);
-    expect(controller.previewCraftItem?.id, 'chair');
-    expect(controller.previewCraftMinutes, 10);
   });
 
   test('timer transitions between running and paused safely', () async {
@@ -172,7 +125,6 @@ void main() {
         failOnPlay: {'piano'},
       );
       final controller = AppController(preferences, audioService: audio);
-      await controller.setTestMode(false);
       await controller.toggleSound('fire');
       await controller.selectFocusRitual('study');
 
@@ -200,27 +152,19 @@ void main() {
       final preferences = await SharedPreferences.getInstance();
       final audio = _TrackingAudioService({'rain', 'fire', 'forest', 'piano'});
       final controller = AppController(preferences, audioService: audio);
-      await controller.setTestMode(false);
       await controller.toggleSound('fire');
       expect(await controller.startSleepTimer(), isTrue);
       await controller.selectFocusRitual('study');
       await controller.startPreparedFocus();
       expect(controller.sleepTimerActive, isFalse);
 
-      controller.testMode = true;
-      await controller.setAutoStartBreaks(true);
-      await controller.completeTestFocus();
-      expect(controller.isBreakSession, isTrue);
-      expect(controller.activeSessionMinutes, 10);
-      expect(controller.remainingSeconds, 10 * 60);
-      expect(audio.playing, isEmpty);
+      await controller.resetTimer();
     },
   );
 
   test('ritual selection and editing are locked during active focus', () async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AppController(preferences);
-    await controller.setTestMode(false);
     await controller.selectFocusRitual('reading');
     await controller.startPreparedFocus();
 
@@ -552,27 +496,6 @@ void main() {
       expect(controller.sleepTimerJustFinished, isTrue);
       expect(controller.soundVolumes.values, everyElement(0));
       expect(audio.playing, isEmpty);
-    },
-  );
-
-  test(
-    'auto-start break begins after accelerated focus and records it once',
-    () async {
-      final preferences = await SharedPreferences.getInstance();
-      final controller = AppController(preferences);
-      await controller.setAutoStartBreaks(true);
-
-      await controller.completeTestFocus();
-
-      expect(controller.showCelebration, isTrue);
-      expect(controller.isBreakSession, isTrue);
-      expect(controller.timerStatus, FocusTimerStatus.running);
-      expect(controller.remainingSeconds, controller.shortBreakMinutes * 60);
-      expect(controller.allTimeMinutes, controller.defaultFocusMinutes);
-
-      await controller.continueAfterCelebration();
-      expect(controller.testPreviewActive, isFalse);
-      await controller.resetTimer();
     },
   );
 

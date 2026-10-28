@@ -12,15 +12,6 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('new progress defaults to production-safe test mode off', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final repository = SharedPreferencesProgressRepository(preferences);
-
-    final progress = await repository.load();
-
-    expect(progress.testMode, isFalse);
-  });
-
   test('versioned progress snapshot survives a complete round trip', () async {
     final preferences = await SharedPreferences.getInstance();
     final repository = SharedPreferencesProgressRepository(preferences);
@@ -31,7 +22,6 @@ void main() {
       darkMode: true,
       focusReminders: false,
       autoStartBreaks: true,
-      testMode: false,
       dailyGoalMinutes: 90,
       defaultFocusMinutes: 45,
       shortBreakMinutes: 10,
@@ -118,7 +108,6 @@ void main() {
       'darkMode': true,
       'focusReminders': false,
       'autoStartBreaks': true,
-      'testMode': false,
       'dailyGoalMinutes': 90,
       'defaultFocusMinutes': 45,
       'shortBreakMinutes': 10,

@@ -295,9 +295,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get off => 'kapalı';
 
   @override
-  String get testFocusComplete => 'Test odağı tamamlandı!';
-
-  @override
   String get beautifulWork => 'Harika iş!';
 
   @override
@@ -307,10 +304,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get readyToFocus => 'Odaklanmaya hazır mısın?';
 
   @override
-  String get testProgressRules =>
-      'Hızlandırılan süre gerçek ilerleme kurallarını kullandı.';
-
-  @override
   String get sanctuaryGrew => 'Huzur alanın biraz daha sakinleşti.';
 
   @override
@@ -318,9 +311,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settleIn => 'Yerleş ve tüm dikkatini tek bir şeye ver.';
-
-  @override
-  String get completeFocusNow => 'Odağı şimdi tamamla';
 
   @override
   String get endBreak => 'Molayı bitir';
@@ -391,9 +381,6 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get testPreview => 'TEST ÖNİZLEMESİ';
-
-  @override
   String get breakPaused => 'MOLA DURAKLATILDI';
 
   @override
@@ -407,30 +394,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get focusSession => 'ODAK SEANSI';
-
-  @override
-  String get testMode => 'Test Modu';
-
-  @override
-  String minutesPreviewed(Object elapsed, Object total) {
-    return '$total dakikanın $elapsed dakikası önizlendi';
-  }
-
-  @override
-  String get testModeBody =>
-      'Gerçek üretim, ödül alma, rozet ve envanter kurallarını koruyarak odak süresini hızlandır.';
-
-  @override
-  String advanceMinutes(Object minutes) {
-    return '$minutes dk ilerlet';
-  }
-
-  @override
-  String get testSessionsSaved =>
-      'Tamamlanan test seansları normal odak seanslarıyla aynı şekilde kaydedilir.';
-
-  @override
-  String get testSessionComplete => 'Test seansı tamamlandı';
 
   @override
   String get sessionComplete => 'Seans tamamlandı';
@@ -606,9 +569,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String autoStartBreaksBody(Object minutes) {
     return 'Odak bitince $minutes dk mola başlat';
   }
-
-  @override
-  String get testModeSettingsBody => 'Sayaçları, ödülleri ve kilitleri önizle';
 
   @override
   String get accountAndSync => 'HESAP VE SENKRONİZASYON';

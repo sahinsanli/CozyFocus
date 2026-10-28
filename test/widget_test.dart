@@ -193,7 +193,6 @@ void main() {
     await tester.tap(find.text('Stats'));
     await tester.pumpAndSettle();
     expect(find.text('Your Journey'), findsOneWidget);
-    expect(find.text('Sleeping Cat'), findsOneWidget);
     expect(find.text('Study Chair'), findsOneWidget);
 
     await tester.tap(find.text('Sounds'));
@@ -246,34 +245,6 @@ void main() {
     expect(find.text('Earned Badges'), findsOneWidget);
     expect(find.text('First Bloom'), findsOneWidget);
     expect(find.text('Zen Keeper'), findsOneWidget);
-  });
-
-  testWidgets('test mode accelerates and saves normal focus progress', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final controller = AppController(preferences);
-    await controller.setDefaultFocusMinutes(15);
-
-    await tester.pumpWidget(CozyFocusApp(controller: controller));
-    await tester.pumpAndSettle();
-    expect(find.text('Test Mode'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Advance 5 min'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Advance 5 min'));
-    await tester.pumpAndSettle();
-    expect(controller.testElapsedMinutes, 5);
-    expect(find.text('TEST PREVIEW'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Complete focus now'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Complete focus now'));
-    await tester.pumpAndSettle();
-    expect(find.text('Test session complete'), findsOneWidget);
-    expect(controller.allTimeMinutes, 15);
-    expect(controller.craftProgress.accumulatedMinutes, 15);
   });
 
   testWidgets('editing the profile name saves without a framework error', (

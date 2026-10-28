@@ -46,9 +46,7 @@ class FocusScreen extends StatelessWidget {
             children: [
               Text(
                 controller.showCelebration
-                    ? controller.testPreviewActive
-                          ? l10n.testFocusComplete
-                          : l10n.beautifulWork
+                    ? l10n.beautifulWork
                     : controller.isBreakSession
                     ? l10n.timeToBreathe
                     : l10n.readyToFocus,
@@ -58,9 +56,7 @@ class FocusScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 controller.showCelebration
-                    ? controller.testPreviewActive
-                          ? l10n.testProgressRules
-                          : l10n.sanctuaryGrew
+                    ? l10n.sanctuaryGrew
                     : controller.isBreakSession
                     ? l10n.focusSafe
                     : l10n.settleIn,
@@ -81,21 +77,14 @@ class FocusScreen extends StatelessWidget {
                   progress: controller.timerProgress,
                   time: time,
                   status: controller.timerStatus,
-                  testPreview: controller.testPreviewActive,
                   isBreak: controller.isBreakSession,
                 ),
-                if (controller.testMode) ...[
-                  const SizedBox(height: 18),
-                  _TestModePanel(controller: controller),
-                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   height: 60,
                   child: FilledButton.icon(
-                    onPressed: controller.testMode
-                        ? controller.completeTestFocus
-                        : () => _handlePrimaryAction(context, controller),
+                    onPressed: () => _handlePrimaryAction(context, controller),
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -103,16 +92,8 @@ class FocusScreen extends StatelessWidget {
                       textStyle: Theme.of(context).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    icon: Icon(
-                      controller.testMode
-                          ? Icons.fast_forward_rounded
-                          : _primaryIcon(controller.timerStatus),
-                    ),
-                    label: Text(
-                      controller.testMode
-                          ? l10n.completeFocusNow
-                          : _primaryLabel(l10n, controller.timerStatus),
-                    ),
+                    icon: Icon(_primaryIcon(controller.timerStatus)),
+                    label: Text(_primaryLabel(l10n, controller.timerStatus)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -125,8 +106,7 @@ class FocusScreen extends StatelessWidget {
                     controller.isBreakSession ? l10n.endBreak : l10n.resetTimer,
                   ),
                 ),
-                if (!controller.testMode &&
-                    !controller.isBreakSession &&
+                if (!controller.isBreakSession &&
                     controller.timerStatus == FocusTimerStatus.idle)
                   TextButton.icon(
                     onPressed: controller.startBreak,
@@ -425,14 +405,12 @@ class _TimerRing extends StatelessWidget {
     required this.progress,
     required this.time,
     required this.status,
-    required this.testPreview,
     required this.isBreak,
   });
 
   final double progress;
   final String time;
   final FocusTimerStatus status;
-  final bool testPreview;
   final bool isBreak;
 
   @override
@@ -477,9 +455,7 @@ class _TimerRing extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  testPreview
-                      ? context.l10n.testPreview
-                      : isBreak
+                  isBreak
                       ? status == FocusTimerStatus.paused
                             ? context.l10n.breakPaused
                             : context.l10n.shortBreak
@@ -497,82 +473,6 @@ class _TimerRing extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TestModePanel extends StatelessWidget {
-  const _TestModePanel({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return CozyCard(
-      color: AppColors.terracottaSoft.withValues(alpha: .35),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.science_outlined, color: AppColors.terracotta),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  context.l10n.testMode,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Switch.adaptive(
-                value: controller.testMode,
-                onChanged: controller.setTestMode,
-              ),
-            ],
-          ),
-          Text(
-            controller.testPreviewActive
-                ? context.l10n.minutesPreviewed(
-                    controller.testElapsedMinutes,
-                    controller.activeSessionMinutes,
-                  )
-                : context.l10n.testModeBody,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => controller.advanceTestFocus(5),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: FittedBox(child: Text(context.l10n.advanceMinutes(5))),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => controller.advanceTestFocus(10),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: FittedBox(
-                    child: Text(context.l10n.advanceMinutes(10)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.l10n.testSessionsSaved,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.terracotta,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -601,9 +501,7 @@ class _CelebrationCard extends StatelessWidget {
                 _RewardPreview(controller: controller, reward: reward),
                 const SizedBox(height: 12),
                 Text(
-                  controller.testPreviewActive
-                      ? context.l10n.testSessionComplete
-                      : context.l10n.sessionComplete,
+                  context.l10n.sessionComplete,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),

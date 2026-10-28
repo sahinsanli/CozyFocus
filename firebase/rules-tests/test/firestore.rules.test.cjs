@@ -125,7 +125,7 @@ describe('Cozy Focus Firestore rules', () => {
       setDoc(doc(db, 'users/owner/state/progress'), validProgress()),
     );
     const invalid = validProgress();
-    invalid.progress.settings.testMode = true;
+    invalid.progress.settings.unexpected = true;
     await assertFails(
       setDoc(doc(db, 'users/owner/state/progress'), invalid),
     );

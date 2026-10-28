@@ -8,7 +8,6 @@ void main() {
     final earnedAt = DateTime.utc(2026, 8, 10, 12);
     final local = AppProgressV2(
       username: 'Local guest',
-      testMode: true,
       dailyMinutes: const {'2026-08-10': 45},
       soundVolumes: const {'rain': .7},
       timer: const TimerSnapshot(
@@ -28,7 +27,6 @@ void main() {
     final cloud = AppProgressV2(
       username: 'Cloud account',
       darkMode: true,
-      testMode: false,
       dailyMinutes: const {'2026-08-10': 25, '2026-08-09': 60},
       inventory: const {
         'desk': InventoryEntry(itemId: 'desk', status: InventoryStatus.owned),
@@ -41,7 +39,6 @@ void main() {
 
     expect(merged.username, 'Cloud account');
     expect(merged.darkMode, isTrue);
-    expect(merged.testMode, isTrue);
     expect(merged.timer.sessionId, 'focus-local');
     expect(merged.soundVolumes['rain'], .7);
     expect(merged.dailyMinutes, {'2026-08-10': 45, '2026-08-09': 60});

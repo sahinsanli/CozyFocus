@@ -76,24 +76,24 @@ Each focused minute contributes crafting progress toward handcrafted room assets
 <div align="center">
   <table>
     <tr>
-      <td align="center"><b>Welcome Splash</b></td>
-      <td align="center"><b>Find Your Focus</b></td>
-      <td align="center"><b>Watch It Grow</b></td>
+      <td align="center"><b>Focus Timer & Crafting</b></td>
+      <td align="center"><b>Living Room Canvas</b></td>
+      <td align="center"><b>Ambient Sound Mixer</b></td>
     </tr>
     <tr>
-      <td><img src="screenshots/01_splash.png" width="230" alt="Splash Screen" /></td>
-      <td><img src="screenshots/02_onboarding_focus.png" width="230" alt="Focus Onboarding" /></td>
-      <td><img src="screenshots/03_onboarding_progress.png" width="230" alt="Progress Onboarding" /></td>
+      <td><img src="screenshots/01_focus.png" width="230" alt="Focus Timer" /></td>
+      <td><img src="screenshots/02_room.png" width="230" alt="Living Room Canvas" /></td>
+      <td><img src="screenshots/03_sounds.png" width="230" alt="Ambient Sound Mixer" /></td>
     </tr>
     <tr>
-      <td align="center"><b>Your Sanctuary</b></td>
-      <td align="center"><b>Living Room Composition</b></td>
-      <td align="center"><b>Decorated Room</b></td>
+      <td align="center"><b>Journey & Statistics</b></td>
+      <td align="center"><b>Profile & Achievements</b></td>
+      <td align="center"><b>App Settings</b></td>
     </tr>
     <tr>
-      <td><img src="screenshots/04_onboarding_sanctuary.png" width="230" alt="Sanctuary Onboarding" /></td>
-      <td><img src="screenshots/05_room.png" width="230" alt="Room Composition" /></td>
-      <td><img src="design/figma_room_layout/reference/target_completed_room.png" width="230" alt="Target Completed Room" /></td>
+      <td><img src="screenshots/04_stats.png" width="230" alt="Journey & Statistics" /></td>
+      <td><img src="screenshots/05_profile.png" width="230" alt="Profile & Achievements" /></td>
+      <td><img src="screenshots/06_settings.png" width="230" alt="App Settings" /></td>
     </tr>
   </table>
 </div>
